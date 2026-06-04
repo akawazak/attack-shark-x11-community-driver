@@ -165,11 +165,16 @@ app.whenReady().then(() => {
 				data: 15,
 			});
 
+			if (!prefs || prefs.length < 15) {
+				console.warn('Device response too short for summary, got', prefs?.length, 'bytes');
+				return null;
+			}
+
 			return {
-				ledSpeed: prefs[4],
-				lightMode: prefs[3],
-				keyResponse: prefs[11],
-				rgb: { r: prefs[12], g: prefs[13], b: prefs[14] },
+				ledSpeed: prefs[4] ?? 0,
+				lightMode: prefs[3] ?? 0,
+				keyResponse: prefs[11] ?? 0,
+				rgb: { r: prefs[12] ?? 0, g: prefs[13] ?? 0, b: prefs[14] ?? 0 },
 			};
 		} catch (e) {
 			console.error('Failed to fetch device summary:', e);

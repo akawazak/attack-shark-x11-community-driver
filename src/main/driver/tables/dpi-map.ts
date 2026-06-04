@@ -1,3 +1,6 @@
+// Maps DPI values to their hardware byte encoding.
+// Above 10000, the encoding wraps/repeats in a pattern matching the sensor's register layout.
+// Values like 10100->0x76, 20100->0x76 are intentional — the high nibble selects the register page.
 export const DPI_STEP_MAP: Record<number, number> = {
 	50: 0x01,
 	100: 0x02,

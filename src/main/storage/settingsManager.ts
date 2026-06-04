@@ -7,7 +7,7 @@ const getSettingsPath = (): string => path.join(getUserDataPath(), 'settings.jso
 
 export interface AppSettings {
 	lastTab: string;
-	connectionMode: 'Adapter' | 'Wired' | 'Bluetooth';
+	connectionMode: 'Adapter' | 'Wired';
 	language: string;
 	preferences: {
 		lightMode: number;

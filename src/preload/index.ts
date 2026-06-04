@@ -9,7 +9,6 @@ const api = {
 	getBattery: (): Promise<number> => ipcRenderer.invoke('get-battery'),
 	setDpi: (config: unknown): Promise<number> => ipcRenderer.invoke('set-dpi', config),
 	getDpi: (): Promise<Buffer> => ipcRenderer.invoke('get-dpi'),
-	getPreferences: (): Promise<Buffer> => ipcRenderer.invoke('get-preferences'),
 	resetDevice: (): Promise<{ success: boolean }> => ipcRenderer.invoke('reset-device'),
 	setPollingRate: (rate: number): Promise<number> => ipcRenderer.invoke('set-polling-rate', rate),
 	setUserPreferences: (prefs: unknown): Promise<number> => ipcRenderer.invoke('set-user-preferences', prefs),

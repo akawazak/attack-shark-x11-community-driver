@@ -9,7 +9,7 @@ declare module '@vue/runtime-core' {
 
 interface AppSettings {
 	lastTab: string;
-	connectionMode: 'Adapter' | 'Wired' | 'Bluetooth';
+	connectionMode: 'Adapter' | 'Wired';
 	language: string;
 	preferences: {
 		lightMode: number;
@@ -36,7 +36,6 @@ declare global {
 			getBattery: () => Promise<number>;
 			setDpi: (config: unknown) => Promise<number>;
 			getDpi: () => Promise<Buffer>;
-			getPreferences: () => Promise<Buffer>;
 			resetDevice: () => Promise<{ success: boolean }>;
 			setPollingRate: (rate: number) => Promise<number>;
 			setUserPreferences: (prefs: unknown) => Promise<number>;

@@ -2,7 +2,7 @@
 import { ref, watch, computed } from 'vue';
 import { Keyboard } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
-import { macroTemplates, MacroName, type MacroTuple } from '../../../main/driver/protocols/MacrosBuilder';
+import { macroTemplates, MacroName, type MacroTuple } from '../../../shared/macro-templates.js';
 import { useDebounce } from '../composables/useDebounce';
 import BaseButton from './BaseButton.vue';
 import BaseSelect from './BaseSelect.vue';

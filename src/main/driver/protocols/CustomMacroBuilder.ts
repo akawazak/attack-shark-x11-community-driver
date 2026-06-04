@@ -1,14 +1,8 @@
 import type { BaseProtocolBuilder } from '../core/BaseProtocolBuilder.js';
 import { ParamsError } from '../errors.js';
 import { Button, type ConnectionMode } from '../types.js';
-import {
-	type KeyCode,
-	type MacroBuilderOptions,
-	MacroName,
-	MacrosBuilder,
-	macroTemplates,
-	type MacroTuple,
-} from './MacrosBuilder.js';
+import { type KeyCode, MacroName, macroTemplates, type MacroTuple } from '../../../shared/macro-templates.js';
+import { type MacroBuilderOptions, MacrosBuilder } from './MacrosBuilder.js';
 
 export enum CUSTOM_MACRO_BUTTONS {
 	LEFT_BUTTON = 0x01,
@@ -56,7 +50,6 @@ export class CustomMacroBuilder implements BaseProtocolBuilder {
 			mode: MacroMode.THE_NUMBER_OF_TIME_TO_PLAY,
 			times: 1,
 		},
-		macrosBuilder: new MacrosBuilder(),
 	};
 	readonly buffer: Buffer = Buffer.alloc(0);
 	public readonly bmRequestType: number = 0x21;
@@ -127,7 +120,7 @@ export class CustomMacroBuilder implements BaseProtocolBuilder {
 
 		const config = { ...CustomMacroBuilder.DEFAULT_OPTIONS, ...options };
 
-		this.defineMacroButton = CustomMacroBuilder.DEFAULT_OPTIONS.macrosBuilder as MacrosBuilder;
+		this.defineMacroButton = new MacrosBuilder();
 		if (config.macrosBuilder !== undefined)
 			this.defineMacroButton =
 				config.macrosBuilder instanceof MacrosBuilder
@@ -281,13 +274,16 @@ export class CustomMacroBuilder implements BaseProtocolBuilder {
 		eventDelay: number;
 		extraDelay?: number;
 	} {
+		const MAX_DELAY = 51000;
+		const clampedMs = Math.min(delayMs, MAX_DELAY);
+
 		const computeByte = (ms: number): number => 2 * Math.floor((ms + 5) / 20) + 1;
 
-		if (delayMs <= 1070) {
-			return { eventDelay: computeByte(delayMs) };
+		if (clampedMs <= 1070) {
+			return { eventDelay: computeByte(clampedMs) };
 		} else {
-			const extraUnits = Math.floor(delayMs / 200);
-			const rem = delayMs % 200;
+			const extraUnits = Math.min(Math.floor(clampedMs / 200), 255);
+			const rem = clampedMs % 200;
 			return { eventDelay: computeByte(rem), extraDelay: extraUnits };
 		}
 	}

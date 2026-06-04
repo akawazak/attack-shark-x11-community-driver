@@ -1,6 +1,6 @@
 {
-    "name": "generate_continue_md",
+    "name": "run_linting",
     "arguments": {
-        "filepath": "/home/dressedinblack/Projects/attack-shark-x11-electron-main/"
+        "command": "flake8 --max-line-length=100 .continue/rules"
     }
 }

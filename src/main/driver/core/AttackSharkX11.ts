@@ -285,9 +285,10 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 		this.checkIsOpen();
 
 		// In wired mode, use Output report type (0x02) instead of Feature (0x03) for OUT transfers
-		const wValue = Buffer.isBuffer(options.data) && this.connectionMode === ConnectionMode.Wired
-			? (options.wValue & 0x00ff) | 0x0200
-			: options.wValue;
+		const wValue =
+			Buffer.isBuffer(options.data) && this.connectionMode === ConnectionMode.Wired
+				? (options.wValue & 0x00ff) | 0x0200
+				: options.wValue;
 
 		const result = await new Promise<number | Buffer>((resolve, reject) => {
 			this.device.controlTransfer(

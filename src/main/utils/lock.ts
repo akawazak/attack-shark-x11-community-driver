@@ -1,14 +1,24 @@
 export class AsyncLock {
 	private locked = false;
+	private waiting: (() => void)[] = [];
 
-	async acquire(): Promise<void> {
-		while (this.locked) {
-			await new Promise((resolve) => setTimeout(resolve, 10));
+	acquire(): Promise<void> {
+		if (!this.locked) {
+			this.locked = true;
+			return Promise.resolve();
 		}
-		this.locked = true;
+
+		return new Promise((resolve) => {
+			this.waiting.push(resolve);
+		});
 	}
 
 	release(): void {
-		this.locked = false;
+		if (this.waiting.length > 0) {
+			const next = this.waiting.shift();
+			next?.();
+		} else {
+			this.locked = false;
+		}
 	}
 }
