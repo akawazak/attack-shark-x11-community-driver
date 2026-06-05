@@ -6,152 +6,102 @@
 [![license](https://img.shields.io/npm/l/attack-shark-x11-driver.svg)](https://github.com/HarukaYamamoto0/attack-shark-x11-driver/blob/main/LICENSE)
 [![Bun](https://img.shields.io/badge/Bun-%23000000.svg?style=flat&logo=bun&logoColor=white)](https://bun.sh)
 
-A TypeScript driver for the **Attack Shark X11 gaming mouse**, providing cross-platform support (focused on Linux) to configure DPI, macros, lighting, and polling rates via USB HID.
+A cross-platform desktop app to configure your **Attack Shark X11** gaming mouse — DPI, macros, lighting, polling rate, and more. Built with Electron + Vue 3.
 
-This repository is an enhanced version of the original driver created by [HarukaYamamoto0](https://github.com/HarukaYamamoto0), featuring a new integrated User Interface built with **Electron** for easier device configuration.
+Fork of [HarukaYamamoto0's driver](https://github.com/HarukaYamamoto0) with a new GUI and extended features.
 
-## Features Added
-- 🖥️ **Modern User Interface**: Intuitive management of device settings via Electron + Vue 3.
-- 🌐 **i18n Support**: Fully localized UI with English and Spanish translations.
-- 🎨 **Theme Support**: Dark, Light, and Cappuccino themes with full CSS variable integration.
-- 🔄 **Auto-Save**: Debounced auto-save for preferences, DPI, and macro settings.
-- 🔌 **Wired Mode Optimization**: Auto-switches to DPI tab on wired connection; hides irrelevant preferences.
-- 🧪 **Comprehensive Tests**: 137 unit tests covering drivers, builders, utilities, and validation.
-- 🛡️ **Type-Safe Settings Loading**: Prevents NaN corruption from malformed saved data.
-- 💾 **Full Config Persistence**: Preferences, DPI, language, theme, active tab, and connection mode persist across restarts.
-- 🔢 **Type Coercion**: Auto-fixes stale string-typed numeric values for seamless upgrades.
+---
 
-## Core Features
-- ✅ **DPI Configuration**: Customizable stages and active stage selection.
-- ✅ **Button Remapping**: Fully customizable button behavior.
-- ✅ **Macros**: Support for custom macros and templates with timing control.
-- ✅ **Lighting Control**: Adjustable modes, speeds, and colors.
-- ✅ **Polling Rate**: Configurable from 125 Hz to 1000 Hz.
-- ✅ **Battery Status**: Real-time battery monitoring.
-- ✅ **Device Reset**: Ability to reset internal device state.
-- ✅ **Cross-platform**: Works on Linux, macOS, and Windows.
+## Quick Install
 
+```bash
+# Arch Linux (AUR)
+yay -S attack-shark-x11-electron
+
+# Other Linux: download from Releases
+```
+
+Grab the latest `.AppImage` or `.deb` from the [Releases page](https://github.com/dressedinblack5/attack-shark-x11-electron/releases).
+
+---
+
+## Features
+
+**Device control** — DPI stages, button remapping, macros with timing, lighting (mode/speed/color), polling rate (125–1000 Hz), battery monitoring, device reset.
+
+**App features** — Dark/Light/Cappuccino themes, i18n (EN/ES), auto-save, full config persistence across restarts, type-safe settings loading.
+
+**Platform** — Linux, macOS, Windows. 137 tests across 13 files.
+
+---
 
 ## Linux Setup (udev)
 
-To access the device without root permissions on Linux, you need to create an udev rule:
-
-1. Create the rule file:
-    ```bash
-    sudo nano /etc/udev/rules.d/99-attack-shark-x11.rules
-    ```
-2. Add the following lines:
-    ```udev
-    SUBSYSTEM=="usb", ATTR{idVendor}=="1d57", ATTR{idProduct}=="fa60", MODE="0666", GROUP="plugdev"
-    SUBSYSTEM=="usb", ATTR{idVendor}=="1d57", ATTR{idProduct}=="fa55", MODE="0666", GROUP="plugdev"
-    ```
-3. Reload rules:
-    ```bash
-    sudo udevadm control --reload-rules
-    sudo udevadm trigger
-    ```
-
-## Installation
-
-You can install this application using pre-built binaries or the AUR.
-
-### AUR Installation (Arch Linux)
-If you are using Arch Linux or an Arch-based distribution, you can install the package directly from the AUR using an AUR helper like `yay`:
+The mouse needs a udev rule so the app can access it without `sudo`:
 
 ```bash
-yay -S attack-shark-x11-electron
+# 1. Create the rule file
+sudo tee /etc/udev/rules.d/99-attack-shark-x11.rules > /dev/null <<'UDEV'
+SUBSYSTEM=="usb", ATTR{idVendor}=="1d57", ATTR{idProduct}=="fa60", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="usb", ATTR{idVendor}=="1d57", ATTR{idProduct}=="fa55", MODE="0666", GROUP="plugdev"
+UDEV
+
+# 2. Reload rules
+sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
-### Installation from Binaries
-You can find pre-built binaries in the [Releases](https://github.com/dressedinblack5/attack-shark-x11-electron/releases) section.
+---
 
-### AppImage (Portable)
-1. Download the `attack-shark-x11-electron-1.2.6.AppImage` file.
-2. Make it executable:
-   ```bash
-   chmod +x attack-shark-x11-electron-1.2.6.AppImage
-   ```
-3. Run it:
-   ```bash
-   ./attack-shark-x11-electron-1.2.6.AppImage
-   ```
+## Build from Source
 
-### .deb Package (Debian/Ubuntu/Pop!_OS)
-1. Download the `attack-shark-x11-electron-1.2.6.deb` file.
-2. Install it using `apt`:
-   ```bash
-   sudo apt install ./attack-shark-x11-electron-1.2.6.deb
-   ```
-
-## Building from Source
-
-To build the application from the source code, ensure you have [Bun](https://bun.sh/) installed.
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/dressedinblack5/attack-shark-x11-electron.git
-   cd attack-shark-x11-electron
-   ```
-2. Install dependencies:
-   ```bash
-   bun install
-   ```
-3. Build the application:
-   ```bash
-   bun run package
-   ```
-   This will compile the application and generate the distribution files in the `dist` folder.
-
-## Running Tests
+Prerequisite: [Bun](https://bun.sh/)
 
 ```bash
-bun test
+git clone https://github.com/dressedinblack5/attack-shark-x11-electron.git
+cd attack-shark-x11-electron
+bun install
+bun run package     # outputs to ./dist
 ```
 
-The test suite covers protocol builders, driver core, utilities, and validation logic (137 tests across 13 files).
+```bash
+bun test            # 137 tests
+```
 
-## Device Specifications
+---
 
-| Specification | Details |
-|---------------|---------|
-| **Model** | Attack Shark X11 |
+## Device Specs
+
+| | |
+|---|---|
 | **Sensor** | PixArt PAW3311 |
-| **Max DPI** | 22,000 (6 adjustable levels) |
-| **Polling Rate** | 125 Hz - 1000 Hz |
+| **Max DPI** | 22,000 (6 levels) |
+| **Polling Rate** | 125–1000 Hz |
 | **Weight** | ~63g |
-| **Battery Life** | Up to 65 hours |
-| **Charge Time** | 2-3 hours |
-| **Connectivity** | Wired / 2.4GHz Wireless / Bluetooth (tri-mode) |
-| **Switches** | HUANO |
-| **Encoder** | TTC |
-| **MCU** | Broadcom |
-| **Charging Dock** | Magnetic RGB dock included |
-| **Grip Styles** | Palm, Claw, Fingertip |
-| **Shell** | Solid (non-honeycomb) |
-| **Vendor ID** | 0x1d57 |
-| **Product IDs** | 0xfa60 (wireless), 0xfa55 (wired) |
+| **Battery** | Up to 65 hrs / 2–3 hr charge |
+| **Connectivity** | Wired + 2.4GHz wireless (Bluetooth untested) |
+| **Vendor / Product** | `0x1d57` / `0xfa60` (wireless), `0xfa55` (wired) |
+
+---
 
 ## Supported Hardware
 
-| Device           | Mode            | Status     |
-|------------------|-----------------|------------|
-| Attack Shark X11 | Wired           | Supported  |
-| Attack Shark X11 | 2.4GHz wireless | Supported  |
-| Attack Shark X11 | Bluetooth       | Not tested |
+| Device | Mode | Status |
+|---|---|---|
+| Attack Shark X11 | Wired | ✅ Supported |
+| Attack Shark X11 | 2.4GHz wireless | ✅ Supported |
+| Attack Shark X11 | Bluetooth | ❓ Not tested |
+| Attack Shark R1 | — | ❓ Not verified |
 
-_Note: Attack Shark R1 might be compatible but hasn't been verified yet._
+---
 
 ## Contributing
 
-This project is a reverse-engineering effort. Contributions such as protocol documentation, new features, or testing with different hardware are very welcome.
+Reverse-engineering effort. PRs welcome for protocol docs, features, or hardware testing. See `docs/` for packet analysis.
 
-- **Protocol Docs**: See `docs/` for packet analysis.
-- **Tools used**: Wireshark, USBPcap.
+---
 
 ## License
 
 MIT © [HarukaYamamoto0](https://github.com/HarukaYamamoto0)
 
----
-
-_Disclaimer: This project is not affiliated with Attack Shark. Use at your own risk._
+*Not affiliated with Attack Shark. Use at your own risk.*
