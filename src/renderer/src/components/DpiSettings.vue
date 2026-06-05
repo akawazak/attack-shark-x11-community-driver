@@ -176,20 +176,20 @@ const dpiStep = 50;
 						<Target class="w-6 h-6 text-shark-primary" /> {{ $t('dpi.activeStage') }}
 					</template>
 					<div class="grid grid-cols-6 gap-2">
-					<button
-						v-for="i in 6"
-						:key="i"
-						:class="[
-							'py-2 rounded-lg text-sm font-medium transition-all',
-							dpiConfig.activeStage === i
-								? 'bg-shark-primary text-white shadow-sm font-bold'
-								: 'bg-[var(--border-card)]/50 text-[var(--text-primary)] opacity-70 hover:opacity-100',
-						]"
-						@click="dpiConfig.activeStage = i"
-					>
-						{{ i }}
-					</button>
-				</div>
+						<button
+							v-for="i in 6"
+							:key="i"
+							:class="[
+								'py-2 rounded-lg text-sm font-medium transition-all',
+								dpiConfig.activeStage === i
+									? 'bg-shark-primary text-white shadow-sm font-bold'
+									: 'bg-[var(--border-card)]/50 text-[var(--text-primary)] opacity-70 hover:opacity-100',
+							]"
+							@click="dpiConfig.activeStage = i"
+						>
+							{{ i }}
+						</button>
+					</div>
 					<p class="text-xs text-[var(--text-primary)] opacity-50 mt-4 text-center">
 						{{ $t('dpi.activeImmediately') }}
 					</p>

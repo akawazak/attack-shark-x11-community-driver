@@ -9,6 +9,7 @@ export interface AppSettings {
 	lastTab: string;
 	connectionMode: 'Adapter' | 'Wired';
 	language: string;
+	theme: string;
 	preferences: {
 		lightMode: number;
 		ledSpeed: number;
@@ -30,6 +31,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 	lastTab: 'preferences',
 	connectionMode: 'Adapter',
 	language: 'en',
+	theme: 'dark',
 	preferences: {
 		lightMode: 0x20, // Breathing
 		ledSpeed: 2,

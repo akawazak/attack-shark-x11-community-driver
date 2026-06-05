@@ -62,14 +62,14 @@ const connect = async (mode: number) => {
 	}
 };
 
-	const fetchSummary = async () => {
-		try {
-			const summary = await window.api.getSummary();
-			deviceSummary.value = summary;
-		} catch (err) {
-			console.error('Failed to fetch summary:', err);
-		}
-	};
+const fetchSummary = async () => {
+	try {
+		const summary = await window.api.getSummary();
+		deviceSummary.value = summary;
+	} catch (err) {
+		console.error('Failed to fetch summary:', err);
+	}
+};
 
 const reset = async () => {
 	if (!confirm('Are you sure you want to reset to factory defaults? This cannot be undone.')) return;
@@ -102,6 +102,10 @@ onMounted(async () => {
 	if (settings) {
 		if (settings.lastTab) activeTab.value = settings.lastTab;
 		if (settings.connectionMode) connectionMode.value = settings.connectionMode;
+		if (settings.theme) {
+			localStorage.setItem('theme', settings.theme);
+			document.documentElement.className = settings.theme === 'dark' ? '' : settings.theme;
+		}
 		if (settings.preferences) {
 			Object.assign(preferences.value, settings.preferences);
 		}
@@ -116,6 +120,7 @@ watch(
 			...settings,
 			lastTab: activeTab.value,
 			connectionMode: connectionMode.value,
+			theme: localStorage.getItem('theme') || 'dark',
 			preferences: JSON.parse(JSON.stringify(toRaw(preferences.value))),
 		});
 	},
@@ -130,9 +135,15 @@ watch(
 			<div class="p-6">
 				<h1 class="text-xl font-bold flex items-center gap-2 text-shark-primary">
 					{{ $t('sidebar.deviceName') }}
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-6 h-6" fill="currentColor" stroke="none">
-						<path d="M3 12 6 8 9 7 10 2 12 8 17 9 22 6 19 11 22 16 16 16 12 17 8 16 5 15 4 13Z"/>
-						<circle cx="6" cy="10" r=".6"/>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 24 24"
+						class="w-6 h-6"
+						fill="currentColor"
+						stroke="none"
+					>
+						<path d="M3 12 6 8 9 7 10 2 12 8 17 9 22 6 19 11 22 16 16 16 12 17 8 16 5 15 4 13Z" />
+						<circle cx="6" cy="10" r=".6" />
 					</svg>
 				</h1>
 			</div>
@@ -198,16 +209,22 @@ watch(
 								:class="batteryLevel <= 20 ? 'bg-red-500' : 'bg-green-700'"
 								:style="{ width: `${batteryLevel > 0 ? batteryLevel : 0}%` }"
 							></div>
-							<div class="absolute -right-1 top-1 w-1 h-2 bg-[var(--sidebar-text-dim)] rounded-r-sm"></div>
+							<div
+								class="absolute -right-1 top-1 w-1 h-2 bg-[var(--sidebar-text-dim)] rounded-r-sm"
+							></div>
 						</div>
 						<span class="text-[var(--sidebar-text-footer)] font-medium">{{ batteryLevel }}%</span>
 					</template>
 					<template v-else>
 						<Plug class="w-4 h-4 text-[var(--sidebar-text)]" />
-						<span class="text-[var(--sidebar-text-footer)] font-medium">{{ $t('connection.wiredDisplay') }}</span>
+						<span class="text-[var(--sidebar-text-footer)] font-medium">{{
+							$t('connection.wiredDisplay')
+						}}</span>
 					</template>
 				</div>
-				<div v-else class="text-xs text-[var(--sidebar-text-muted)] italic">{{ $t('connection.disconnected') }}</div>
+				<div v-else class="text-xs text-[var(--sidebar-text-muted)] italic">
+					{{ $t('connection.disconnected') }}
+				</div>
 				<div class="text-[10px] text-[var(--sidebar-text-dim)] mt-2">v{{ version }}</div>
 			</div>
 		</div>
@@ -229,14 +246,18 @@ watch(
 						@click="connect(0xfa60)"
 						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-4 rounded-xl border border-[var(--connection-card-border)] transition-all group"
 					>
-						<Zap class="w-8 h-8 mx-auto mb-2 text-[var(--connection-card-text)] group-hover:text-shark-primary" />
+						<Zap
+							class="w-8 h-8 mx-auto mb-2 text-[var(--connection-card-text)] group-hover:text-shark-primary"
+						/>
 						<span class="block font-semibold">{{ $t('connection.adapter') }}</span>
 					</button>
 					<button
 						@click="connect(0xfa55)"
 						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-4 rounded-xl border border-[var(--connection-card-border)] transition-all group"
 					>
-						<ShieldAlert class="w-8 h-8 mx-auto mb-2 text-[var(--connection-card-text)] group-hover:text-shark-primary" />
+						<ShieldAlert
+							class="w-8 h-8 mx-auto mb-2 text-[var(--connection-card-text)] group-hover:text-shark-primary"
+						/>
 						<span class="block font-semibold">{{ $t('connection.wired') }}</span>
 					</button>
 				</div>

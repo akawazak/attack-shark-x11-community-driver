@@ -130,7 +130,6 @@ const applyCustomMacro = async () => {
 
 // Removed debounced watcher
 
-
 const getEventLabel = (event: MacroEvent): string => {
 	if (event.type === 'key') {
 		const keyEntry = Object.entries(KeyCode).find(([, v]) => v === event.keyCode);

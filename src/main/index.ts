@@ -11,6 +11,7 @@ import * as settingsManager from './storage/settingsManager.js';
 import { CustomMacroBuilder, type CustomMacroBuilderOptions } from './driver/protocols/CustomMacroBuilder.js';
 import type { UserPreferencesBuilderOptions } from './driver/protocols/UserPreferencesBuilder.js';
 import type { MacroBuilderOptions } from './driver/protocols/MacrosBuilder.js';
+import type { MacroMode } from '../shared/macro-types.js';
 
 let driver: AttackSharkX11 | null = null;
 // ... (in app.whenReady())
@@ -214,21 +215,36 @@ app.whenReady().then(() => {
 		return driver.setCustomMacro(builder);
 	});
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	ipcMain.handle('send-custom-macro', (_, config: { targetButton: number; playOptions: any; events: any[] }) => {
-		if (!driver) throw new Error('Device not connected');
+	interface SendMacroEvent {
+		keyCode: number;
+		delayMs: number;
+		isRelease: boolean;
+	}
 
-		const builder = new CustomMacroBuilder({
-			targetButton: config.targetButton,
-			playOptions: config.playOptions,
-		});
+	ipcMain.handle(
+		'send-custom-macro',
+		(
+			_,
+			config: {
+				targetButton: number;
+				playOptions: { mode?: MacroMode; times?: number };
+				events: SendMacroEvent[];
+			},
+		) => {
+			if (!driver) throw new Error('Device not connected');
 
-		for (const event of config.events) {
-			builder.addEvent(event.keyCode, event.delayMs, event.isRelease);
-		}
+			const builder = new CustomMacroBuilder({
+				targetButton: config.targetButton,
+				playOptions: config.playOptions,
+			});
 
-		return driver.setCustomMacro(builder);
-	});
+			for (const event of config.events) {
+				builder.addEvent(event.keyCode, event.delayMs, event.isRelease);
+			}
+
+			return driver.setCustomMacro(builder);
+		},
+	);
 
 	ipcMain.handle('list-profiles', () => profileManager.listProfiles());
 	ipcMain.handle('save-profile', (_, name: string, data: unknown) => profileManager.saveProfile(name, data));

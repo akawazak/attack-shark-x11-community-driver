@@ -11,6 +11,7 @@ interface AppSettings {
 	lastTab: string;
 	connectionMode: 'Adapter' | 'Wired';
 	language: string;
+	theme: string;
 	preferences: {
 		lightMode: number;
 		ledSpeed: number;
