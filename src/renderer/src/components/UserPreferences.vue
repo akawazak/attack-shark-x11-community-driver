@@ -78,9 +78,7 @@ const keyResponses = Array.from({ length: 24 }, (_, i) => 4 + i * 2);
 
 const statusMessage = ref('');
 const isSaving = ref(false);
-const statusType = computed(() =>
-	statusMessage.value.includes('Error') ? 'error' : 'success',
-);
+const statusType = computed(() => (statusMessage.value.includes('Error') ? 'error' : 'success'));
 const profiles = ref<string[]>([]);
 const newProfileName = ref('');
 
@@ -212,11 +210,10 @@ async function applyPreferences(showUi = true) {
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 			<Card>
-					<template #title>
-						<Palette class="w-6 h-6 text-shark-primary" />
-						{{ $t('preferences.lighting') }}
-					</template>
-
+				<template #title>
+					<Palette class="w-6 h-6 text-shark-primary" />
+					{{ $t('preferences.lighting') }}
+				</template>
 
 				<div class="space-y-4">
 					<div>

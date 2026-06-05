@@ -331,7 +331,7 @@ describe('AttackSharkX11', () => {
 			);
 		});
 
-		it('should use Output report type for wired mode OUT transfers', async () => {
+		it('should use Feature report type for wired mode OUT transfers', async () => {
 			const driver = createDriver(ConnectionMode.Wired);
 			driver.open();
 
@@ -347,7 +347,7 @@ describe('AttackSharkX11', () => {
 			expect(driver.device.controlTransfer).toHaveBeenCalledWith(
 				0x21,
 				0x09,
-				0x0204,
+				0x0304,
 				2,
 				data,
 				expect.any(Function),

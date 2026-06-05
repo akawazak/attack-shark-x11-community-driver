@@ -21,9 +21,7 @@ const templateOptions = Object.keys(macroTemplates).map((name) => ({
 
 const statusMessage = ref('');
 const isSaving = ref(false);
-const statusType = computed(() =>
-	statusMessage.value.includes(t('macros.errorPrefix')) ? 'error' : 'success',
-);
+const statusType = computed(() => (statusMessage.value.includes(t('macros.errorPrefix')) ? 'error' : 'success'));
 const selectedTemplate = ref<MacroName>(templateOptions[0].value);
 
 const buttons = computed(() => [
@@ -115,4 +113,3 @@ watch([selectedTemplate, selectedButton], () => debouncedApplyMacro());
 		</Card>
 	</div>
 </template>
-
