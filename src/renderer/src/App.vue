@@ -118,7 +118,7 @@ watch(
 <template>
 	<div class="flex h-full">
 		<!-- Sidebar -->
-		<div class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
+		<div id="sidebar" class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
 			<div class="p-6">
 				<h1 class="text-xl font-bold flex items-center gap-2 text-shark-primary">
 					<MousePointer2 class="w-6 h-6" />
@@ -234,7 +234,7 @@ watch(
 					class="mt-6 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg"
 				>
 					{{ connectionError }}
-					<p class="text-[10px] mt-2 opacity-50">Tip: If device is busy, try unplugging and replugging it.</p>
+					<p class="text-[10px] mt-2 opacity-50">{{ $t('connection.errorTip') }}</p>
 				</div>
 			</div>
 

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { HardDrive, Info } from 'lucide-vue-next';
 import BaseButton from './BaseButton.vue';
 import Card from './Card.vue';
+import StatusMessage from './StatusMessage.vue';
 
 const { t } = useI18n();
 
@@ -62,24 +63,16 @@ onMounted(() => {
 			</BaseButton>
 		</div>
 
-		<!-- Error Message -->
-		<div
-			v-if="errorMessage"
-			:class="['p-3 rounded-lg text-sm border', 'bg-red-500/10 border-red-500/20 text-red-400']"
-		>
-			{{ errorMessage }}
-		</div>
+		<StatusMessage :message="errorMessage" type="error" />
 
 		<!-- Device Info Display -->
 		<div v-if="deviceInfo" class="grid grid-cols-1 md:grid-cols-2 gap-6">
 			<!-- Manufacturer & Product -->
 			<Card>
-				<h3
-					class="text-lg font-semibold border-b border-[var(--border-card)] pb-2 text-[var(--text-primary)] opacity-70 uppercase tracking-wider flex items-center gap-3 mb-6"
-				>
+				<template #title>
 					<HardDrive class="w-5 h-5 text-shark-primary" />
 					{{ $t('deviceInfo.deviceTitle') }}
-				</h3>
+				</template>
 				<div class="space-y-4">
 					<div>
 						<p class="text-xs text-[var(--text-tertiary)] mb-1">{{ $t('deviceInfo.manufacturer') }}</p>
@@ -98,11 +91,9 @@ onMounted(() => {
 
 			<!-- USB & Firmware Details -->
 			<Card>
-				<h3
-					class="text-lg font-semibold border-b border-[var(--border-card)] pb-2 text-[var(--text-primary)] opacity-70 uppercase tracking-wider flex items-center gap-3 mb-6"
-				>
+				<template #title>
 					{{ $t('deviceInfo.technicalDetails') }}
-				</h3>
+				</template>
 				<div class="space-y-4">
 					<div>
 						<p class="text-xs text-[var(--text-tertiary)] mb-1">{{ $t('deviceInfo.vendorId') }}</p>

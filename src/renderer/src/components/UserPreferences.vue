@@ -7,7 +7,7 @@ import BaseInput from './BaseInput.vue';
 import BaseSelect from './BaseSelect.vue';
 import BaseSlider from './BaseSlider.vue';
 import Card from './Card.vue';
-import AppInput from './AppInput.vue';
+import StatusMessage from './StatusMessage.vue';
 import { useDebounce } from '../composables/useDebounce';
 
 export interface UserPreferences {
@@ -78,6 +78,9 @@ const keyResponses = Array.from({ length: 24 }, (_, i) => 4 + i * 2);
 
 const statusMessage = ref('');
 const isSaving = ref(false);
+const statusType = computed(() =>
+	statusMessage.value.includes('Error') ? 'error' : 'success',
+);
 const profiles = ref<string[]>([]);
 const newProfileName = ref('');
 
@@ -181,12 +184,10 @@ async function applyPreferences(showUi = true) {
 		</div>
 
 		<Card>
-			<h3
-				class="text-lg font-semibold border-b border-[var(--border-card)] pb-2 text-[var(--text-primary)] opacity-70 uppercase tracking-wider flex items-center gap-3 mb-4"
-			>
-				<Database class="w-6 h-6 text-[var(--color-accent)]" />
+			<template #title>
+				<Database class="w-6 h-6 text-shark-primary" />
 				{{ $t('preferences.storedProfiles') }}
-			</h3>
+			</template>
 			<div class="flex flex-wrap gap-2">
 				<div
 					v-for="profile in profiles"
@@ -207,26 +208,15 @@ async function applyPreferences(showUi = true) {
 			</div>
 		</Card>
 
-		<div
-			v-if="statusMessage"
-			:class="[
-				'p-3 rounded-lg text-sm border',
-				statusMessage.includes('Error')
-					? 'bg-red-500/10 border-red-500/20 text-red-400'
-					: 'bg-shark-accent/10 border-shark-accent/20 text-shark-accent',
-			]"
-		>
-			{{ statusMessage }}
-		</div>
+		<StatusMessage :message="statusMessage" :type="statusType" />
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 			<Card>
-				<h3
-					class="text-lg font-semibold border-b border-[var(--border-card)] pb-2 text-[var(--text-primary)] opacity-70 uppercase tracking-wider flex items-center gap-3 mb-4"
-				>
-					<Palette class="w-6 h-6 text-[var(--color-accent)]" />
-					{{ $t('preferences.lighting') }}
-				</h3>
+					<template #title>
+						<Palette class="w-6 h-6 text-shark-primary" />
+						{{ $t('preferences.lighting') }}
+					</template>
+
 
 				<div class="space-y-4">
 					<div>
@@ -276,31 +266,29 @@ async function applyPreferences(showUi = true) {
 							<label class="block text-sm font-medium text-[var(--text-primary)] opacity-70 mb-2">{{
 								$t('preferences.red')
 							}}</label>
-							<AppInput type="number" v-model.number="rgb.r" min="0" max="255" />
+							<BaseInput type="number" v-model.number="rgb.r" min="0" max="255" />
 						</div>
 						<div class="col-span-1">
 							<label class="block text-sm font-medium text-[var(--text-primary)] opacity-70 mb-2">{{
 								$t('preferences.green')
 							}}</label>
-							<AppInput type="number" v-model.number="rgb.g" min="0" max="255" />
+							<BaseInput type="number" v-model.number="rgb.g" min="0" max="255" />
 						</div>
 						<div class="col-span-1">
 							<label class="block text-sm font-medium text-[var(--text-primary)] opacity-70 mb-2">{{
 								$t('preferences.blue')
 							}}</label>
-							<AppInput type="number" v-model.number="rgb.b" min="0" max="255" />
+							<BaseInput type="number" v-model.number="rgb.b" min="0" max="255" />
 						</div>
 					</div>
 				</div>
 			</Card>
 
 			<Card>
-				<h3
-					class="text-lg font-semibold border-b border-[var(--border-card)] pb-2 text-[var(--text-primary)] opacity-70 uppercase tracking-wider flex items-center gap-3 mb-4"
-				>
-					<Cpu class="w-6 h-6 text-[var(--color-accent)]" />
+				<template #title>
+					<Cpu class="w-6 h-6 text-shark-primary" />
 					{{ $t('preferences.deviceBehavior') }}
-				</h3>
+				</template>
 
 				<div class="space-y-4">
 					<div>

@@ -7,7 +7,7 @@ describe('useDebounce', () => {
 	});
 
 	afterEach(() => {
-		vi.restoreAllMocks();
+		vi.useRealTimers();
 	});
 
 	it('should debounce the function call', () => {

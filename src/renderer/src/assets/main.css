@@ -35,6 +35,20 @@ body {
 	flex-direction: column;
 }
 
+#sidebar {
+	position: relative;
+}
+
+#sidebar::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: url('./shark-x11-small.png') no-repeat bottom 150px center / min(90%, 600px);
+	mix-blend-mode: multiply;
+	opacity: 1;
+	pointer-events: none;
+}
+
 input[type='range']::-webkit-slider-thumb {
 	-webkit-appearance: none;
 	appearance: none;

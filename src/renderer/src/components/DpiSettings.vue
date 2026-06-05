@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Zap, Target, Sliders } from 'lucide-vue-next';
-import BaseButton from './BaseButton.vue';
 import BaseInput from './BaseInput.vue';
 import BaseSelect from './BaseSelect.vue';
 import BaseSlider from './BaseSlider.vue';
 import Card from './Card.vue';
+import StatusMessage from './StatusMessage.vue';
+import { useDebounce } from '../composables/useDebounce';
 
 const { t } = useI18n();
 
@@ -26,9 +27,50 @@ onMounted(async () => {
 	if (settings && settings.dpiConfig) {
 		Object.assign(dpiConfig, settings.dpiConfig);
 	}
+
+	// Set up watcher after initial load so it doesn't fire on mount
+	watch(
+		dpiConfig,
+		async () => {
+			const s = await window.api.getSettings();
+			await window.api.saveSettings({
+				...s,
+				dpiConfig: {
+					activeStage: dpiConfig.activeStage,
+					angleSnap: dpiConfig.angleSnap,
+					ripplerControl: dpiConfig.ripplerControl,
+					dpiValues: [...dpiConfig.dpiValues],
+				},
+			});
+			if (props.isConnected) {
+				debouncedApplyDpi();
+			}
+		},
+		{ deep: true },
+	);
 });
+
 const statusMessage = ref('');
 const isSaving = ref(false);
+const statusType = computed(() =>
+	statusMessage.value.includes(t('dpi.error')) ? 'error' : 'success',
+);
+
+const debouncedApplyDpi = useDebounce(async () => {
+	if (!props.isConnected) return;
+	try {
+		const config = {
+			activeStage: dpiConfig.activeStage,
+			angleSnap: dpiConfig.angleSnap,
+			ripplerControl: dpiConfig.ripplerControl,
+			dpiValues: [...dpiConfig.dpiValues],
+		};
+		await window.api.setDpi(config);
+	} catch (err: unknown) {
+		const error = err instanceof Error ? err : new Error(String(err));
+		console.error('Auto-save DPI failed:', error);
+	}
+}, 300);
 
 const applyDpi = async () => {
 	if (!props.isConnected) return;
@@ -37,7 +79,6 @@ const applyDpi = async () => {
 	statusMessage.value = t('dpi.updating');
 
 	try {
-		// Ensure we send a plain object and valid stage index
 		const config = {
 			activeStage: dpiConfig.activeStage,
 			angleSnap: dpiConfig.angleSnap,
@@ -71,32 +112,17 @@ const dpiStep = 50;
 				<Target class="w-8 h-8 text-shark-primary" />
 				{{ $t('dpi.title') }}
 			</h2>
-			<BaseButton @click="applyDpi" :disabled="!isConnected || isSaving" variant="green">
-				{{ isSaving ? $t('dpi.applying') : $t('dpi.save') }}
-			</BaseButton>
 		</div>
 
-		<div
-			v-if="statusMessage"
-			:class="[
-				'p-3 rounded-lg text-sm border',
-				statusMessage.includes($t('dpi.error'))
-					? 'bg-red-500/10 border-red-500/20 text-red-400'
-					: 'bg-shark-accent/10 border-shark-accent/20 text-shark-accent',
-			]"
-		>
-			{{ statusMessage }}
-		</div>
+		<StatusMessage :message="statusMessage" :type="statusType" />
 
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 			<!-- Sensor Settings -->
 			<div class="lg:col-span-1 space-y-6">
 				<Card>
-					<h3
-						class="text-lg font-semibold border-b border-[var(--border-card)] pb-2 text-[var(--text-primary)] opacity-70 uppercase tracking-wider flex items-center gap-3 mb-6"
-					>
+					<template #title>
 						<Sliders class="w-6 h-6 text-shark-primary" /> {{ $t('dpi.sensorOptions') }}
-					</h3>
+					</template>
 
 					<div class="space-y-6">
 						<div class="flex items-center justify-between gap-4">
@@ -148,11 +174,9 @@ const dpiStep = 50;
 				</Card>
 
 				<Card>
-					<h3
-						class="text-lg font-semibold border-b border-[var(--border-card)] pb-2 text-[var(--text-primary)] opacity-70 uppercase tracking-wider flex items-center gap-3 mb-4"
-					>
+					<template #title>
 						<Target class="w-6 h-6 text-shark-primary" /> {{ $t('dpi.activeStage') }}
-					</h3>
+					</template>
 					<BaseSelect v-model.number="dpiConfig.activeStage">
 						<option v-for="i in 6" :key="i" :value="i">{{ $t('dpi.stage') }} {{ i }}</option>
 					</BaseSelect>
@@ -164,12 +188,10 @@ const dpiStep = 50;
 
 			<!-- DPI Stages -->
 			<Card class="lg:col-span-2">
-				<h3
-					class="text-lg font-semibold border-b border-[var(--border-card)] pb-2 text-[var(--text-primary)] opacity-70 uppercase tracking-wider flex items-center gap-3"
-				>
+				<template #title>
 					<Zap class="w-6 h-6 text-shark-primary" />
 					{{ $t('dpi.sensitivityStages') }}
-				</h3>
+				</template>
 
 				<div class="mt-6 space-y-3 overflow-y-auto pr-2" style="min-height: 400px">
 					<div

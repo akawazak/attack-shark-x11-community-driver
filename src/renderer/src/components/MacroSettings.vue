@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import { Keyboard } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
+import { Keyboard } from 'lucide-vue-next';
 import { macroTemplates, MacroName, type MacroTuple } from '../../../shared/macro-templates.js';
 import { useDebounce } from '../composables/useDebounce';
-import BaseButton from './BaseButton.vue';
 import BaseSelect from './BaseSelect.vue';
 import Card from './Card.vue';
+import StatusMessage from './StatusMessage.vue';
 
 const props = defineProps<{
 	isConnected: boolean;
@@ -21,6 +21,9 @@ const templateOptions = Object.keys(macroTemplates).map((name) => ({
 
 const statusMessage = ref('');
 const isSaving = ref(false);
+const statusType = computed(() =>
+	statusMessage.value.includes(t('macros.errorPrefix')) ? 'error' : 'success',
+);
 const selectedTemplate = ref<MacroName>(templateOptions[0].value);
 
 const buttons = computed(() => [
@@ -80,30 +83,15 @@ watch([selectedTemplate, selectedButton], () => debouncedApplyMacro());
 				<Keyboard class="w-8 h-8 text-shark-primary" />
 				{{ $t('macros.title') }}
 			</h2>
-			<BaseButton @click="applyMacro" :disabled="!isConnected || isSaving" variant="green">
-				{{ isSaving ? $t('macros.applying') : $t('macros.apply') }}
-			</BaseButton>
 		</div>
 
-		<div
-			v-if="statusMessage"
-			:class="[
-				'p-3 rounded-lg text-sm border',
-				statusMessage.includes(t('macros.errorPrefix'))
-					? 'bg-red-500/10 border-red-500/20 text-red-400'
-					: 'bg-shark-accent/10 border-shark-accent/20 text-shark-accent',
-			]"
-		>
-			{{ statusMessage }}
-		</div>
+		<StatusMessage :message="statusMessage" :type="statusType" />
 
 		<Card>
-			<h3
-				class="text-lg font-semibold border-b border-[var(--border-card)] pb-2 text-[var(--text-primary)] opacity-70 uppercase tracking-wider flex items-center gap-3 mb-6"
-			>
+			<template #title>
 				<Keyboard class="w-6 h-6 text-shark-primary" />
 				{{ $t('macros.configTitle') }}
-			</h3>
+			</template>
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 				<div>
 					<label class="block text-sm font-medium text-[var(--text-primary)] opacity-70 mb-2">{{
@@ -128,18 +116,3 @@ watch([selectedTemplate, selectedButton], () => debouncedApplyMacro());
 	</div>
 </template>
 
-<style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-	width: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-	background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-	background: #1e293b;
-	border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-	background: #334155;
-}
-</style>
