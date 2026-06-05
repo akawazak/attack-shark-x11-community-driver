@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window >
+  <ListContainerElement height="25">
+    <Label name="key" resourcetext="false" align="center" textcolor="0xFFFFFFFF"/>
+    <Label name="action" resourcetext="true" align="center" textcolor="0xFFFFFFFF"/>
+    <Label name="delay" align="center" textcolor="0xFFFFFFFF"/>
+  </ListContainerElement>
+</Window>

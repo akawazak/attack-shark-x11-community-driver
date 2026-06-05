@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Window>
+	<VerticalLayout>
+		<Control/>
+		<HorizontalLayout height="87">
+			<Control/>
+			<Control width="102" bkimage="skins/logo_1.png"/>
+			<Control/>
+		</HorizontalLayout>
+		<Label text="welcom_1_text" resourcetext="true" height="30" align="center" valign="vcenter" font="5" textcolor="0xFFFFFFFF" padding="30,40,30,0"/>
+		<Label text="welcom_2_text" resourcetext="true" height="30" align="center" valign="vcenter" font="6" textcolor="0xFFFFFFFF" padding="30,60,30,0"/>
+		<Label text="welcom_3_text" resourcetext="true" height="30" align="center" valign="vcenter" font="7" textcolor="0xFFFFFFFF" padding="30,30,30,0"/>
+		<Control/>
+	</VerticalLayout>
+</Window>

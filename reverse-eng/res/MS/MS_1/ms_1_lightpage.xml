@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Window>
+	<HorizontalLayout>
+		<Control width="130"/>
+		<VerticalLayout width="215">
+			<Control height="10"/>
+			<Container height="409" bkimage="skins\ms_1/mouse.png">
+			</Container>
+		</VerticalLayout>
+		<VerticalLayout padding="60,0,0,0">
+			<Control height="30"/>
+			<VerticalLayout width="284" height="375" bkimage="skins\ms_1/light_bg.png">
+				<HorizontalLayout height="28" padding="20,20,20,0">
+					<Label text="light_mode_text" resourcetext="true" width="79" align="left" valign="vcenter" textcolor="0xFFFFFFFF" tooltip="light_mode_text" endellipsis="true"/>
+					<Combo name="ms_1_light_mode_combo" width="151" style="profile_combo_style" dropboxsize="0,310" itemalign="center" itemvalign="vcenter" resourcetext="true" endellipsis="true" itemendellipsis="true"
+						dropbox="bordercolor=&quot;0xFF666666&quot; bordersize=&quot;1&quot; bkimage=&quot;skins/combo_bk.png&quot;">
+						<ListLabelElement text="ms_1_lightmode1" height="25" resourcetext="true" tooltip="ms_1_lightmode1" selected="true"/>
+						<ListLabelElement text="ms_1_lightmode2" height="25" resourcetext="true" tooltip="ms_1_lightmode2"/>
+						<ListLabelElement text="ms_1_lightmode3" height="25" resourcetext="true" tooltip="ms_1_lightmode3"/>
+						<ListLabelElement text="ms_1_lightmode4" height="25" resourcetext="true" tooltip="ms_1_lightmode4"/>
+						<ListLabelElement text="ms_1_lightmode5" height="25" resourcetext="true" tooltip="ms_1_lightmode5"/>
+						<ListLabelElement text="ms_1_lightmode6" height="25" resourcetext="true" tooltip="ms_1_lightmode6"/>
+						<ListLabelElement text="ms_1_lightmode7" height="25" resourcetext="true" tooltip="ms_1_lightmode7"/>
+						<ListLabelElement text="ms_1_lightmode8" height="25" resourcetext="true" tooltip="ms_1_lightmode8"/>
+						<ListLabelElement text="ms_1_lightmode9" height="25" resourcetext="true" tooltip="ms_1_lightmode9"/>
+						<ListLabelElement text="ms_1_lightmode10" height="25" resourcetext="true" tooltip="ms_1_lightmode10"/>
+						<ListLabelElement text="ms_1_lightmode11" height="25" resourcetext="true" tooltip="ms_1_lightmode11"/>
+						<ListLabelElement text="ms_1_lightmode12" height="25" resourcetext="true" tooltip="ms_1_lightmode12"/>
+					</Combo>	
+					
+					<Combo name="ms_1_light_mode_combo_ble" width="151" style="profile_combo_style" dropboxsize="0,310" itemalign="center" itemvalign="vcenter" resourcetext="true" endellipsis="true" itemendellipsis="true" visible="false"
+						dropbox="bordercolor=&quot;0xFF666666&quot; bordersize=&quot;1&quot; bkimage=&quot;skins/combo_bk.png&quot;">
+						<ListLabelElement text="ms_1_lightmode1" height="25" resourcetext="true" tooltip="ms_1_lightmode1" selected="true"/>
+						<ListLabelElement text="ms_1_lightmode2" height="25" resourcetext="true" tooltip="ms_1_lightmode2"/>
+						<ListLabelElement text="ms_1_lightmode3" height="25" resourcetext="true" tooltip="ms_1_lightmode3"/>
+						<ListLabelElement text="ms_1_lightmode4" height="25" resourcetext="true" tooltip="ms_1_lightmode4"/>
+						<ListLabelElement text="ms_1_lightmode5" height="25" resourcetext="true" tooltip="ms_1_lightmode5"/>
+						<ListLabelElement text="ms_1_lightmode6" height="25" resourcetext="true" tooltip="ms_1_lightmode6"/>
+					</Combo>	
+				</HorizontalLayout>
+				<VerticalLayout  name="ms_1_brightness_ver" padding="0,5,0,0" height="40">
+					<Label text="ms_1_brightness_text" resourcetext="true" height="28" align="center" valign="vcenter" textcolor="0xFFFFFFFF"/>
+					<HorizontalLayout height="12" padding="0,0,0,0">
+						<Control/>
+						<Slider name="ms_1_brightness_slider" enabled="true" width="201" height="12" value="10" min="1" max="8" bkimage="skins/slider_bg.png" 
+							thumbimage="skins/SliderBar_Thumb_1.png" thumbhotimage="skins/SliderBar_Thumb_2.png" thumbpushedimage="skins/SliderBar_Thumb_2.png" thumbsize="13,12" />
+						<Control/>	
+					</HorizontalLayout>
+				</VerticalLayout>
+				
+				<VerticalLayout name="ms_1_breath_ver" height="40" padding="0,5,0,0">
+					<Label text="ms_1_breathing_text" resourcetext="true" height="28"  align="center" valign="vcenter" textcolor="0xFFFFFFFF"/>
+					<HorizontalLayout height="12" padding="0,0,0,0">
+						<Control/>
+						<Slider name="ms_1_breathing_slider" enabled="true" width="201" height="12" value="2" min="1" max="8" bkimage="skins/slider_bg.png" 
+							thumbimage="skins/SliderBar_Thumb_1.png" thumbhotimage="skins/SliderBar_Thumb_2.png" thumbpushedimage="skins/SliderBar_Thumb_2.png" thumbsize="13,12" />
+						<Control/>	
+					</HorizontalLayout>	
+				</VerticalLayout>
+				
+				<HorizontalLayout width="60" padding="5,12,0,0" visible="false">
+					<Button name="ms_1_synchronize_btn" text="ms_1_synchronize_text" resourcetext="true" height="28" textcolor="0xFFFFFFFF" align="center" valign="vcenter" visible="false" tooltip="synchronize_text" endellipsis="true"
+						normalimage="res='common/tab_normal.png' corner='1,1,1,1'"
+						hotimage="res='common/tab_over.png' corner='1,1,1,1'"
+						pushedimage="res='common/tab_down.png' corner='1,1,1,1'"/>
+				</HorizontalLayout>	
+				
+				<HorizontalLayout name="ms_1_color_hor" padding="0,10,0,0">
+					<Control/>
+					<VerticalLayout width="201">
+						<HorizontalLayout height="28">
+							<Label text="ms_1_preview_text" resourcetext="true" width="111" align="right" valign="vcenter" textcolor="0xFFFFFFFF" tooltip="preview_text" endellipsis="true"/>
+							<Control name="ms_1_preview_control" width="80" bkcolor="0xFFFF0000" padding="10,0,0,0"/>
+						</HorizontalLayout>
+						
+						<HorizontalLayout padding="0,5,0,0">
+							<VerticalLayout width="18" childpadding="4">
+								<Button name="ms_1_color_btn1" height="18" bkcolor="0xFF00FFFF"/>
+								<Button name="ms_1_color_btn2" height="18" bkcolor="0xFF6CFF00"/>
+								<Button name="ms_1_color_btn3" height="18" bkcolor="0xFF7F00FF"/>
+								<Button name="ms_1_color_btn4" height="18" bkcolor="0xFF007FFF"/>
+								<Button name="ms_1_color_btn5" height="18" bkcolor="0xFF0000FF"/>
+								<Button name="ms_1_color_btn6" height="18" bkcolor="0xFF7FFF00"/>
+								<Button name="ms_1_color_btn7" height="18" bkcolor="0xFFFF5400"/>
+								<Button name="ms_1_color_btn8" height="18" bkcolor="0xFFFF7F00"/>
+							</VerticalLayout>
+							
+							<VerticalLayout width="18" childpadding="4" padding="4,0,0,0">
+								<Button name="ms_1_color_btn9" height="18" bkcolor="0xFFFFB400"/>
+								<Button name="ms_1_color_btn10" height="18" bkcolor="0xFFFFFF00"/>
+								<Button name="ms_1_color_btn11" height="18" bkcolor="0xFFFF0000"/>
+								<Button name="ms_1_color_btn12" height="18" bkcolor="0xFFFF00FF"/>
+								<Button name="ms_1_color_btn13" height="18" bkcolor="0xFF1EB40A"/>
+								<Button name="ms_1_color_btn14" height="18" bkcolor="0xFF48B1FF"/>
+								<Button name="ms_1_color_btn15" height="18" bkcolor="0xFFFF48B0"/>
+								<Button name="ms_1_color_btn16" height="18" bkcolor="0xFFFFFFFF"/>
+							</VerticalLayout>
+							
+							<VerticalLayout padding="20,0,0,0">
+								<HorizontalLayout height="13">
+									<HorizontalLayout width="42" bkimage="res='skins/rgb_edit_1.png' corner='2,2,2,2'">
+										<Label text="R" width="18" align="center" valign="vcenter" textcolor="0xFFFFFFFF" font="3"/>
+										<Edit name="ms_1_r_edit" font="3" align="center" valign="vcenter" numberonly="true" maxchar="3" bkcolor="0x5F000000" textcolor="0xFFFFFFFF" nativebkcolor="0x5F000000" nativetextcolor="0xFFFFFFFF"/>
+									</HorizontalLayout>
+									<Control/>
+									<HorizontalLayout width="42" bkimage="res='skins/rgb_edit_1.png' corner='2,2,2,2'">
+										<Label text="G" width="18" align="center" valign="vcenter" textcolor="0xFFFFFFFF" font="3"/>
+										<Edit name="ms_1_g_edit" font="3" align="center" valign="vcenter" numberonly="true" maxchar="3" bkcolor="0x5F000000" textcolor="0xFFFFFFFF" nativebkcolor="0x5F000000" nativetextcolor="0xFFFFFFFF"/>
+									</HorizontalLayout>
+									<Control/>
+									<HorizontalLayout width="42" bkimage="res='skins/rgb_edit_1.png' corner='2,2,2,2'">
+										<Label text="B" width="18" align="center" valign="vcenter" textcolor="0xFFFFFFFF" font="3"/>
+										<Edit name="ms_1_b_edit" font="3" align="center" valign="vcenter" numberonly="true" maxchar="3" bkcolor="0x5F000000" textcolor="0xFFFFFFFF" nativebkcolor="0x5F000000" nativetextcolor="0xFFFFFFFF"/>
+									</HorizontalLayout>
+								</HorizontalLayout>
+								
+								<ColorPalette name="ms_1_light_color_pallet" height="147" palletheight="133" barheight="15" padding="0,12,0,0" thumbimage="skins/cursor.png" sendmove="true"/>
+							</VerticalLayout>
+						</HorizontalLayout>
+					</VerticalLayout>
+					<Control/>
+				</HorizontalLayout>
+				
+				<VerticalLayout  name="ms_1_sleep_timer_ver" padding="0,5,0,0" height="60" visible="false">
+					<Label text="ms_1_sleep_timer_text" resourcetext="true" height="28" align="center" valign="vcenter" textcolor="0xFFFFFFFF"/>
+					<HorizontalLayout height="18" padding="0,0,0,0">
+						<Control/>
+						<Slider name="ms_1_sleep_timer_slider" enabled="true" width="156" height="12" value="10" min="1" max="10" bkimage="skins/slider_bg.png" padding="0,3,0,0" sendmove="true"
+							thumbimage="skins/SliderBar_Thumb_1.png" thumbhotimage="skins/SliderBar_Thumb_2.png" thumbpushedimage="skins/SliderBar_Thumb_2.png" thumbsize="13,12" />
+						<Label name="ms_1_label_sleep_timer" width="40" textcolor="0xFF000000" align="center" valign="vcenter" bkcolor="0xFFFFFFFF" padding="5,0,0,0"/>
+						<Control/>	
+					</HorizontalLayout>
+				</VerticalLayout>
+			</VerticalLayout>
+			<Control />
+			<Control height="30"/>
+		</VerticalLayout>
+		
+	</HorizontalLayout>
+</Window>

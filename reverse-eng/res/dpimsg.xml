@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Window caption="0,0,0,0" size="200,50" bktrans="true">
+	<VerticalLayout bkcolor="0x7F000000">
+		<Label name="dpi_label" text="1234" height="50" align="center" valign="vcenter" textcolor="0xFFFFFFFF" font="5"/>
+	</VerticalLayout>
+</Window>

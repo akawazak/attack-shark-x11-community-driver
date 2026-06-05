@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window  showshadow="true" gdiplustext="true">
+	<Import fontfile="Font/HelveticaNeue.ttf"/>
+<!-- Menu样式 -->
+<Default name="Menu" shared="true" value="bordersize=&quot;1&quot; borderround=&quot;0,0&quot; bordercolor=&quot;0xFF28B4E6&quot; inset=&quot;2,2,2,2&quot; bkcolor=&quot;0xFF000000&quot; itemtextpadding=&quot;5,0,0,0&quot; itemtextcolor=&quot;0xFFFFFFFF&quot; itemhottextcolor=&quot;0xFFFFFFFF&quot; itemhotbkcolor=&quot;0xFF28B4E6&quot; itemselectedbkcolor=&quot;0xFF28B4E6&quot;" />
+<!-- ExplandIcon样式 -->
+<Default name="ExplandIcon" shared="true" value="skins/menu_expand.png" />
+<Default name="MenuElement" share="true" value="height=&quot;30&quot; width=&quot;92&quot;"/>
+  <Menu>
+    <MenuElement name="load" text="load_text" resourcetext="true"/>
+	<MenuElement name="save" text="save_text" resourcetext="true"/>
+  </Menu>
+</Window>

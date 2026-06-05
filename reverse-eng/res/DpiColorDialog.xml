@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window  size="250,200" bktrans="true" caption="0,0,0,20">
+	<VerticalLayout width="250" height="200" padding="0,0,0,0" name="root" bkimage="skins/select_color_bg.png">
+	    <HorizontalLayout width="250" height="25" padding="0,4,0,0">
+			<Label width="150" height="20" text="Color_Picker" textcolor="#FFFFFFFF" font="6" resourcetext="true" padding="5,0,0,0" />
+		</HorizontalLayout>
+		
+		<HorizontalLayout width="250" height="80" padding="0,0,0,0">
+			<Control width="10" height="80" />
+			<ColorPalette name="ColorPallet" width="230" height="80" sendmove="true" palletheight="72" barheight="10" padding="0,0,0,0" thumbimage="skins/cursor.png" />
+			<Control width="10" height="80"  />
+		</HorizontalLayout>
+		
+		<HorizontalLayout height="20" padding="10,5,10,0">
+			<HorizontalLayout width="70" bkimage="res='skins/rgb_edit_1.png' corner='2,2,2,2'">
+				<Label text="R" width="18" align="center" valign="vcenter" textcolor="0xFFFFFFFF"/>
+				<Edit name="r_edit" align="center" valign="vcenter" numberonly="true" maxchar="3" bkcolor="0x5F000000" textcolor="0xFFFFFFFF" nativebkcolor="0x5F000000" nativetextcolor="0xFFFFFFFF"/>
+			</HorizontalLayout>
+			<Control/>
+			<HorizontalLayout width="70" bkimage="res='skins/rgb_edit_1.png' corner='2,2,2,2'">
+				<Label text="G" width="18" align="center" valign="vcenter" textcolor="0xFFFFFFFF"/>
+				<Edit name="g_edit" align="center" valign="vcenter" numberonly="true" maxchar="3" bkcolor="0x5F000000" textcolor="0xFFFFFFFF" nativebkcolor="0x5F000000" nativetextcolor="0xFFFFFFFF"/>
+			</HorizontalLayout>
+			<Control/>
+			<HorizontalLayout width="70" bkimage="res='skins/rgb_edit_1.png' corner='2,2,2,2'">
+				<Label text="B" width="18" align="center" valign="vcenter" textcolor="0xFFFFFFFF"/>
+				<Edit name="b_edit" align="center" valign="vcenter" numberonly="true" maxchar="3" bkcolor="0x5F000000" textcolor="0xFFFFFFFF" nativebkcolor="0x5F000000" nativetextcolor="0xFFFFFFFF"/>
+			</HorizontalLayout>
+		</HorizontalLayout>
+		
+
+		<HorizontalLayout width="238" height="50" bkcolor="#FF383737" padding="6,0,6,0">
+			<Control name="color_show_control" width="40" height="33" padding="6,9,0,0" />
+			<VerticalLayout width="240" height="42" padding="5,3,0,0">
+				<HorizontalLayout width="240" height="20" childpadding="2" padding="0,2,0,0" >						
+					<Button name="mouse_dpi_color_1" width="20" height="20" bkcolor="0xFF00FFFF"/>
+					<Button name="mouse_dpi_color_2" width="20" height="20" bkcolor="0xFF6CFF00"/>
+					<Button name="mouse_dpi_color_3" width="20" height="20" bkcolor="0xFF7F00FF"/>
+					<Button name="mouse_dpi_color_4" width="20" height="20" bkcolor="0xFF007FFF"/>
+					<Button name="mouse_dpi_color_5" width="20" height="20" bkcolor="0xFF0000FF"/>
+					<Button name="mouse_dpi_color_6" width="20" height="20" bkcolor="0xFF7FFF00"/>
+					<Button name="mouse_dpi_color_7" width="20" height="20" bkcolor="0xFFFF5400"/>
+					<Button name="mouse_dpi_color_8" width="20" height="20" bkcolor="0xFFFF7F00"/>
+				</HorizontalLayout>         
+				<HorizontalLayout width="240" height="20" childpadding="2" padding="0,2,0,0">						
+					<Button name="mouse_dpi_color_9"  width="20" height="20" bkcolor="0xFFFFB400"/>
+					<Button name="mouse_dpi_color_10" width="20" height="20" bkcolor="0xFFFFFF00"/>
+					<Button name="mouse_dpi_color_11" width="20" height="20" bkcolor="0xFFFF0000"/>
+					<Button name="mouse_dpi_color_12" width="20" height="20" bkcolor="0xFFFF00FF"/>
+					<Button name="mouse_dpi_color_13" width="20" height="20" bkcolor="0xFF1EB40A"/>
+					<Button name="mouse_dpi_color_14" width="20" height="20" bkcolor="0xFF48B1FF"/>
+					<Button name="mouse_dpi_color_15" width="20" height="20" bkcolor="0xFFFF48B0"/>
+					<Button name="mouse_dpi_color_16" width="20" height="20" bkcolor="0xFFFFFFFF"/>
+				</HorizontalLayout>
+			</VerticalLayout>
+	   </HorizontalLayout>
+		<Button name="cancel_btn" float="true" pos="180,0,15,15" width="25" height="25" 
+			normalimage="skins/btn_gbi_1.png"
+			hotimage="skins/btn_gbi_2.png" 
+			pushedimage="skins/btn_gbi_3.png" />
+		<Button name="confirm_btn" float="true" pos="210,0,15,15" width="25" height="25" 
+					normalimage="skins/btn_dxz_1.png"
+					hotimage="skins/btn_dxz_2.png" 
+					pushedimage="skins/btn_dxz_3.png" />
+	</VerticalLayout>
+</Window>

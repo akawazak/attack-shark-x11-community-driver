@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Res>	
+	<Text id="lan_text" value="Ngôn ngữ"/>
+	<Text id="about_text" value="Giới thiệu"/>
+	<Text id="version_text" value="Số phiên bản: "/>
+	<Text id="copyright_text" value=""/>
+	<Text id="start_open_text" value="Khởi động"/>
+	<!-- Config Page-->
+	<Text id="version" value="V1.0"/>
+	<Text id="device_1_text" value=""/>
+	<Text id="configuration_text" value="Cấu hình"/>
+	<Text id="exit_text" value="Thoát"/>
+	<Text id="mouse_name_text" value="Attack Shark Driver"/>
+	<Text id="profile_text" value="Cấu hình"/>
+	<Text id="low_power_text" value="Thiết bị cần sạc"/>
+	<Text id="charging_text" value="Đang sạc..."/>
+	<Text id="apply_text" value="Ứng dụng"/>
+	<Text id="confirm_text" value="OK"/>
+	<Text id="ok_text" value="Xác đ ịnh"/>
+	<Text id="cancel_text" value="Hủy"/>
+	<Text id="add_profile_text" value="Cấu hình"/>
+	<Text id="add_profile_tooltip_text" value="tăng cấu hình"/>
+	<Text id="delete_profile_tooltip_text" value="Xóa cấu hình"/>
+	<Text id="rename_profile_tooltip_text" value="Đổi tên cấu hình"/>
+	<Text id="import_profile_tooltip_text" value="nhập cấu hình"/>
+	<Text id="export_profile_tooltip_text" value="xuất cấu hình"/>
+	<Text id="reset_profile_tooltip_text" value="Khôi phục cấu hình"/>
+	<Text id="power_text" value="pin"/>
+	<Text id="welcom_1_text" value="Chào mừng bạn đến với Attack Shark Driver"/>
+	<Text id="welcom_2_text" value="Tìm kiếm thiết bị..."/>
+	<Text id="welcom_3_text" value="Nếu không phản hồi trong một thời gian dài, hãy kiểm tra xem thiết bị đã được kết nối hoặc ghép nối thành công chưa"/>
+	<Text id="tongbu_text" value="Đang đồng bộ hóa dữ liệu, xin chờ!"/>
+
+	<!-- mouse Button page-->
+	<Text id="button_setting_text" value="Cài đặt phím"/>
+	<Text id="dpi_setting_text" value="Cài đặt DPI"/>
+	<Text id="light_setting_text" value="thiết lập ánh sáng"/>
+	<Text id="prate_setting_text" value="Cài đặt tỷ lệ hoàn vốn"/>
+	<Text id="mouse_attribute_setting_text" value="Thuộc tính chuột"/>
+	<Text id="mouse_attribute_text" value="Mở thuộc tính chuột"/>
+	<Text id="power_setting_text" value="Quản lý năng lượng"/>
+	<Text id="macro_manager_text" value="quản lý macro"/>
+	<Text id="assign_macro_text" value="macro-"/>
+	
+	<Text id="light_mode_text" value="Chế độ:"/>
+	<Text id="light_brightness_text" value="độ sáng:"/>
+	<Text id="light_breathspeed_text" value="Tốc độ:"/>
+	<Text id="light_color_text" value="màu sắc:"/>
+	
+	<Text id="prate_1_text" value="Chế độ tiết kiệm năng lượng"/>
+	<Text id="prate_2_text" value="Chế độ văn phòng"/>
+	<Text id="prate_3_text" value="Chế độ chơi"/>
+	<Text id="prate_4_text" value="Chế độ Esports"/>
+	
+	<Text id="sleep_timer_1_text" value="Ngủ đông:"/>
+	<Text id="sleep_timer_2_text" value="phút"/>
+	<Text id="sleep_timer_3_text" value="Thời gian ngủ:"/>
+	<Text id="sleep_timer_4_text" value="giây"/>
+	<Text id="wake_mode_text" value="đánh thức di động"/>
+
+	<Text id="lift_of_distance_text" value="nâng cao"/>
+	<Text id="lift_of_distance_1_text" value="1 MM"/>
+	<Text id="lift_of_distance_2_text" value="2 MM"/>
+
+	<Text id="key_debounce_text" value="thời gian đáp ứng phím"/>
+	
+	<Text id="ripple_control_text" value="Điều khiển sóng"/>
+	
+	<Text id="angle_snap_text" value="Chụp góc"/>
+	
+	<Text id="motion_sync_text" value="Đồng bộ hóa chuyển động"/>
+	
+	<Text id="off_text" value="Tắt"/>
+	<Text id="on_text" value="Mở"/>
+
+	<!-- Shortcut page-->
+	<Text id="shortcut_setting_text" value="khóa đơn hoặc tổ hợp"/>
+	<Text id="keyboard_ctrl_text" value="Ctrl"/>
+	<Text id="keyboard_shift_text" value="Shift"/>
+	<Text id="keyboard_alt_text" value="Alt"/>
+	<Text id="keyboard_win_text" value="Win"/>
+	
+	<!--Profile Name-->
+	<Text id="profile_name_1_text" value="tăng cấu hình"/>
+	<Text id="profile_name_2_text" value="Chỉnh sửa cấu hình"/>
+	<Text id="profile_name_3_text" value="Nhập tên:"/>
+
+	<!-- Select Macro-->
+	<Text id="select_macro_1_text" value="Chọn lệnh macro"/>
+	<Text id="select_macro_2_text" value="Danh sách macro"/>
+	<Text id="select_macro_3_text" value="Số vòng lặp:"/>
+	<Text id="select_macro_4_text" value="số lần lặp"/>
+	<Text id="select_macro_5_text" value="Nhấn phím bất kỳ để ngừng chơi"/>
+	<Text id="select_macro_6_text" value="Nhấn và giữ để chơi, nhả dừng"/>
+
+	<!-- Warning-->
+	<Text id="warning_title_text" value="Cảnh báo!"/>
+	<Text id="delete_profile_text" value="Bạn có chắc muốn xóa cấu hình này không?"/>
+	<Text id="one_profile_text" value="Giữ ít nhất một hồ sơ!"/>
+	<Text id="delete_macro_text" value="Bạn có chắc muốn xóa lệnh macro này không?"/>
+	<Text id="one_click_text" value="Ít nhất một chức năng phím là&quot;Left Click&quot;!"/>
+	<Text id="no_device_text" value="Thiết bị không được kết nối!"/>
+	<Text id="save_macro_text" value="Chuột macro không lưu, vui lòng nhấp OK hoặc hủy!"/>
+	<Text id="sleep_device_text" value="thiết bị ngủ"/>
+	<Text id="restore_text" value="Bạn có chắc muốn khôi phục cấu hình này về mặc định không?"/>
+	<Text id="warn_name_1_text" value="Tên không thể trống, vui lòng nhập lại!"/>
+	<Text id="warn_name_2_text" value="Tên lặp lại, vui lòng nhập lại!"/>
+
+	<!-- Macro-->
+	<Text id="add_macro_text" value="macro"/>
+	<Text id="add_macro_tooltip_1_text" value="+"/>
+	<Text id="delete_macro_tooltip_1_text" value="-"/>
+	<Text id="add_macro_tooltip_text" value="thêm macro"/>
+	<Text id="delete_macro_tooltip_text" value="Xóa macro"/>
+	<Text id="macro_name_text" value="tên macro"/>
+	<Text id="macro_mouse_event_text" value="Sự kiện chuột"/>
+	<Text id="macro_command_text" value="lệnh chuột"/>
+	<Text id="mouse_key_1_text" value="left-key"/>
+	<Text id="mouse_key_2_text" value="right-key"/>
+	<Text id="mouse_key_3_text" value="khóa giữa"/>
+	<Text id="mouse_key_4_text" value="Tiến lên"/>
+	<Text id="mouse_key_5_text" value="Lùi lại"/>
+	<Text id="insert_mouse_event_text" value="hành động chuột"/>
+	<Text id="start_recording_text" value="bản ghi"/>
+	<Text id="stop_recording_text" value="stop"/>
+	<Text id="macro_list_header_key_text" value="phím"/>
+	<Text id="macro_list_header_action_text" value="hành động"/>
+	<Text id="macro_list_header_delay_text" value="delay (ms)"/>
+	<Text id="macro_up_text" value="di chuyển lên"/>
+	<Text id="macro_down_text" value="di chuyển xuống"/>
+	<Text id="macro_delete_action_text" value="xóa"/>
+	<Text id="macro_clear_action_text" value="Xóa tất cả"/>
+	<Text id="mouse_move_text" value="Di chuyển con chạy"/>
+	<Text id="export_text" value="xuất"/>
+	<Text id="import_text" value="nhập"/>
+	<Text id="macro_edit_text" value="Sửa đổi"/>
+	<Text id="record_delay_text" value="ghi chậm trễ"/>
+	<Text id="no_delay_text" value="độ trễ tối thiểu"/>
+	<Text id="default_delay_text" value="ms độ trễ mặc định"/>
+	<Text id="macro_list_text" value="Danh sách macro"/>
+	<Text id="delay_times_text" value="delay"/>
+	<Text id="ms_text" value="MS"/>
+	<Text id="insert_delay_ok_text" value="chèn"/>
+	<Text id="insert_delay_cancel_text" value="Hủy"/>
+	<Text id="insert_key_ok_text" value="lưu"/>
+  
+	<!--Command-->
+	<Text id="left_click_text" value="trái"/>
+	<Text id="right_click_text" value="Phải"/>
+	<Text id="wheel_click_text" value="khóa giữa"/>
+	<Text id="forward_text" value="tiếp tục"/>
+	<Text id="backward_text" value="lùi"/>
+	<Text id="double_click_text" value="Nhấp đúp"/>
+	<Text id="fire_button_text" value="phím lửa"/>
+	<Text id="easy_aim_text" value="Phím bắn tỉa"/>
+	<Text id="led_loop_text" value="chuyển đổi ánh sáng"/>
+	<Text id="assign_shortcut_text" value="khóa đơn hoặc tổ hợp"/>
+	<Text id="select_macro_text" value="Chọn lệnh macro"/>
+	<Text id="scroll_up_text" value="cuộn lên"/>
+	<Text id="scroll_down_text" value="cuộn xuống"/>
+	<Text id="titl_right_text" value="cuộn sang phải"/>
+	<Text id="titl_left_text" value="cuộn sang trái"/>
+
+	<Text id="dpi_text" value="DPI"/>
+	<Text id="dpi_cycle_text" value="vòng lặp DPI"/>
+	<Text id="dpi_up_text" value="DPI +"/>
+	<Text id="dpi_down_text" value="DPI -"/>
+
+	<Text id="profile_cycle_text" value="Cấu hình vòng lặp"/>
+	<Text id="profile_up_text" value="cấu hình+"/>
+	<Text id="profile_down_text" value="cấu hình-"/>
+
+	<Text id="media_function_text" value="chức năng đa phương tiện"/>
+	<Text id="media_player_text" value="media player"/>
+	<Text id="play_pause_text" value="chơi/tạm dừng"/>
+	<Text id="media_stop_text" value="dừng"/>
+	<Text id="previous_track_text" value="Bài hát trước"/>
+	<Text id="next_track_text" value="Bài hát tiếp theo"/>
+	<Text id="volume_up_text" value="âm lượng+"/>
+	<Text id="volume_down_text" value="âm lượng-"/>
+	<Text id="mute_text" value="im lặng"/>
+
+	<Text id="browser_function_text" value="trình duyệt"/>
+	<Text id="browser_home_text" value="Trang chủ trình duyệt"/>
+	<Text id="browser_favorites_text" value="Yêu thích trình duyệt"/>
+	<Text id="browser_forward_text" value="trình duyệt chuyển tiếp"/>
+	<Text id="browser_backward_text" value="trình duyệt trở lại"/>
+	<Text id="browser_stop_text" value="trình duyệt dừng"/>
+	<Text id="browser_refresh_text" value="Làm mới trình duyệt"/>
+	<Text id="browser_search_text" value="trình duyệt tìm kiếm"/>
+	<Text id="email_text" value="Email"/>
+	<Text id="calculator_text" value="máy tính"/>
+	<Text id="my_computer_text" value="máy tính của tôi"/>
+
+	<Text id="shortcut_function_text" value="shortcut"/>
+	<Text id="cut_text" value="cắt"/>
+	<Text id="copy_text" value="copy"/>
+	<Text id="paste_text" value="dán"/>
+	<Text id="open_text" value="mở"/>
+	<Text id="save_text" value="lưu"/>
+	<Text id="find_text" value="Tìm"/>
+	<Text id="redo_text" value="làm lại"/>
+	<Text id="undo_text" value="hủy bỏ"/>
+	<Text id="select_all_text" value="chọn tất cả"/>
+	<Text id="print_text" value="in"/>
+	<Text id="close_window_text" value="Đóng cửa sổ"/>
+	<Text id="swap_windows_text" value="Chuyển đổi cửa sổ"/>
+	<Text id="show_desktop_text" value="Hiển thị màn hình nền"/>
+	<Text id="run_command_text" value="chạy"/>
+	<Text id="lock_pc_text" value="khóa"/>
+	<Text id="screen_capture_text" value="ảnh chụp màn hình"/>
+
+	<Text id="button_off_text" value="phím tắt"/>
+
+	<!-- MS-1-->
+	<Text id="ms_lightmode1" value="Đóng"/>
+	<Text id="ms_lightmode2" value="Thường sáng"/>
+	<Text id="ms_lightmode3" value="Thở"/>
+	<Text id="ms_lightmode4" value="Neon"/>
+	<Text id="ms_lightmode5" value="hơi thở tuần hoàn"/>
+	<Text id="ms_lightmode6" value="DPI thường sáng"/>
+	<Text id="ms_lightmode7" value="DPI thở"/>
+	<Text id="ms_lightmode8" value="sóng"/>
+	<Text id="ms_lightmode9" value="Đèn chạy hỗn hợp"/>
+	<Text id="ms_lightmode10" value="Màu sắc thường sáng"/>
+	<Text id="ms_lightmode11" value="Ngựa đua bảy màu"/>
+	<Text id="ms_lightmode12" value="Ngựa đua bảy màu 2"/>
+  <!--Keyboard string-->
+  <!-- 键盘按键 -->
+	<Text id="key_LCtrl" value="LCtrl" />                 
+	<Text id="key_LShift" value="LShift" />                
+	<Text id="key_LAlt"  value="LAlt" />                  
+	<Text id="key_LWin"  value="LWin" />                
+	<Text id="key_RCtrl"  value="RCtrl" />                 
+	<Text id="key_RShift" value="RShift" />                
+	<Text id="key_RAlt" value="RAlt" />                  
+	<Text id="key_RWin" value="RWin" />                
+	<Text id="key_A" value="A" />                     
+	<Text id="key_B" value="B" />                     
+	<Text id="key_C" value="C" />                     
+	<Text id="key_D" value="D" />                     
+	<Text id="key_E" value="E" />                     
+	<Text id="key_F" value="F" />                     
+	<Text id="key_G" value="G" />                     
+	<Text id="key_H" value="H" />                     
+	<Text id="key_I" value="I" />                     
+	<Text id="key_J" value="J" />                     
+	<Text id="key_K" value="K" />                     
+	<Text id="key_L" value="L" />                     
+	<Text id="key_M" value="M" />                     
+	<Text id="key_N" value="N" />                     
+	<Text id="key_O" value="O" />                     
+	<Text id="key_P" value="P" />                     
+	<Text id="key_Q" value="Q" />                     
+	<Text id="key_R" value="R" />                     
+	<Text id="key_S" value="S" />                     
+	<Text id="key_T" value="T" />                     
+	<Text id="key_U" value="U" />                     
+	<Text id="key_V" value="V" />                     
+	<Text id="key_W" value="W" />                     
+	<Text id="key_X" value="X" />                     
+	<Text id="key_Y" value="Y" />                     
+	<Text id="key_Z" value="Z" />                     
+	<Text id="key_1" value="1" />                     
+	<Text id="key_2" value="2" />                     
+	<Text id="key_3" value="3" />                     
+	<Text id="key_4" value="4" />                     
+	<Text id="key_5" value="5" />                     
+	<Text id="key_6" value="6" />                     
+	<Text id="key_7" value="7" />                     
+	<Text id="key_8" value="8" />                     
+	<Text id="key_9" value="9" />                     
+	<Text id="key_0" value="0" />                     
+	<Text id="key_Enter" value="Enter" />	               
+	<Text id="key_Esc" value="Esc" />                   
+	<Text id="key_BackSpace" value="BackSpace" />             
+	<Text id="key_Tab" value="Tab" />	                 
+	<Text id="key_Space" value="Space" />                 
+	<Text id="key_-" value="-" />                     
+	<Text id="key_=" value="=" />                     
+	<Text id="key_[" value="[" />                     
+	<Text id="key_]" value="]" />                     
+	<Text id="key_xiexian" value="\" />                  
+	<Text id="key_;" value=";" />                     
+	<Text id="key_'" value="'" />                     
+	<Text id="key_`" value="`" />                     
+	<Text id="key_," value="," />                     
+	<Text id="key_." value="." />                     
+	<Text id="key_/" value="/" />                     
+	<Text id="key_Caplk" value="Caplk" />                 
+	<Text id="key_F1" value="F1" />                    
+	<Text id="key_F2" value="F2" />                    
+	<Text id="key_F3" value="F3" />                    
+	<Text id="key_F4" value="F4" />                    
+	<Text id="key_F5" value="F5" />                    
+	<Text id="key_F6" value="F6" />                    
+	<Text id="key_F7" value="F7" />                    
+	<Text id="key_F8" value="F8" />                    
+	<Text id="key_F9" value="F9" />                    
+	<Text id="key_F10" value="F10" />                   
+	<Text id="key_F11" value="F11" />                   
+	<Text id="key_F12" value="F12" />                   
+	<Text id="key_Print Scr" value="Print Scr" />             
+	<Text id="key_Scroll Lock" value="Scroll Lock" />           
+	<Text id="key_Pause" value="Pause" />                 
+	<Text id="key_Insert" value="Insert" />                
+	<Text id="key_Home" value="Home" />                  
+	<Text id="key_Page Up" value="Page Up" />               
+	<Text id="key_Delete" value="Delete" />                
+	<Text id="key_End" value="End" />                   
+	<Text id="key_Page Down" value="Page Down" />             
+	<Text id="key_Right" value="Right" />                 
+	<Text id="key_Left" value="Left" />                  
+	<Text id="key_Down" value="Down" />                  
+	<Text id="key_Up" value="Up" />                    
+	<Text id="key_Num Lock" value="Num Lock" />              
+	<Text id="key_Num_/" value="Num /" />                 
+	<Text id="key_Num_*" value="Num *" />                 
+	<Text id="key_Num_-" value="Num -" />                 
+	<Text id="key_Num_+" value="Num +" />                 
+	<Text id="key_Num_Enter" value="Num Enter" />             
+	<Text id="key_Num_1" value="Num 1" />                 
+	<Text id="key_Num_2" value="Num 2" />                 
+	<Text id="key_Num_3" value="Num 3" />                 
+	<Text id="key_Num_4" value="Num 4" />                 
+	<Text id="key_Num_5" value="Num 5" />                 
+	<Text id="key_Num_6" value="Num 6" />                 
+	<Text id="key_Num_7" value="Num 7" />                 
+	<Text id="key_Num_8" value="Num 8" />                 
+	<Text id="key_Num_9" value="Num 9" />                 
+	<Text id="key_Num_0" value="Num 0" />                 
+	<Text id="key_Num_." value="Num ." />               
+	<Text id="key_APP" value="App" />                   	 
+	<Text id="L_Button" value="Nút trái"/>
+	<Text id="R_Button" value="Right-click"/>
+	<Text id="M_Button" value="Trung bình"/>
+	<Text id="Forward_Button" value="Tiến lên"/>
+	<Text id="Backward_Button" value="Lùi lại"/>
+
+	<Text id="key_down_action" value="nhấn"/>
+	<Text id="key_up_action" value="Giải phóng"/>
+</Res>
