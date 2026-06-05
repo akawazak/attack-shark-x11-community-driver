@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-
-<Window caption="0,0,0,0" size="160,30">
-	<Import fontfile="Font/HelveticaNeue.ttf"/>
-	<VerticalLayout bkcolor="0xFF00B5E2" bordersize="1" bordercolor="0xFF000000" height="30">
-		<Label name="label_tips" autocalcwidth="true" height="30" textpadding="10,0,10,0" align="center" valign="vcenter" textcolor="0xFF000000" endellipsis="true"/>	
-	</VerticalLayout>
-</Window>
