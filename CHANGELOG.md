@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.2.5] - 2026-06-05
+
+### Added
+- Background image watermark in sidebar
+- Comprehensive test suite: 137 unit tests across 13 files (driver, builders, utilities, validation)
+- `StatusMessage.vue` shared component for consistent status banners
+- `Card.vue` `title` slot for unified card heading pattern
+
+### Changed
+- Merged `AppInput.vue` into `BaseInput.vue` with optional `label` prop
+- DPI settings auto-save with 300ms debounce (removed manual Save button)
+- Macro settings auto-save with 300ms debounce (removed manual Apply button)
+- DPI auto-apply watcher moved inside `onMounted` to prevent stale apply on tab switch
+
+### Fixed
+- Hardcoded English string in `App.vue` now uses `$t('connection.errorTip')` (i18n)
+- `--color-accent` → `text-shark-primary` in UserPreferences.vue (3 occurrences)
+- `mb-4` → `mb-6` on card headings in UserPreferences.vue (3 occurrences)
+- Removed unused `.custom-scrollbar` CSS from MacroSettings.vue
+- Test suite hang fixed by replacing `useFakeTimers` leak and removing real delays from tests
+
+### Chores
+- Updated README with v1.2.5 version references, feature list, and test info
+- Bumped version to 1.2.5
+
 ## [1.2.1] - 2026-06-04
 
 ### Refactored
