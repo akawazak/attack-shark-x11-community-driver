@@ -18,6 +18,8 @@ This repository is an enhanced version of the original driver created by [Haruka
 - 🔌 **Wired Mode Optimization**: Auto-switches to DPI tab on wired connection; hides irrelevant preferences.
 - 🧪 **Comprehensive Tests**: 137 unit tests covering drivers, builders, utilities, and validation.
 - 🛡️ **Type-Safe Settings Loading**: Prevents NaN corruption from malformed saved data.
+- 💾 **Full Config Persistence**: Preferences, DPI, language, theme, active tab, and connection mode persist across restarts.
+- 🔢 **Type Coercion**: Auto-fixes stale string-typed numeric values for seamless upgrades.
 
 ## Core Features
 - ✅ **DPI Configuration**: Customizable stages and active stage selection.
@@ -64,21 +66,21 @@ yay -S attack-shark-x11-electron
 You can find pre-built binaries in the [Releases](https://github.com/dressedinblack5/attack-shark-x11-electron/releases) section.
 
 ### AppImage (Portable)
-1. Download the `attack-shark-x11-electron-1.2.5.AppImage` file.
+1. Download the `attack-shark-x11-electron-1.2.6.AppImage` file.
 2. Make it executable:
    ```bash
-   chmod +x attack-shark-x11-electron-1.2.5.AppImage
+   chmod +x attack-shark-x11-electron-1.2.6.AppImage
    ```
 3. Run it:
    ```bash
-   ./attack-shark-x11-electron-1.2.5.AppImage
+   ./attack-shark-x11-electron-1.2.6.AppImage
    ```
 
 ### .deb Package (Debian/Ubuntu/Pop!_OS)
-1. Download the `attack-shark-x11-electron-1.2.5.deb` file.
+1. Download the `attack-shark-x11-electron-1.2.6.deb` file.
 2. Install it using `apt`:
    ```bash
-   sudo apt install ./attack-shark-x11-electron-1.2.5.deb
+   sudo apt install ./attack-shark-x11-electron-1.2.6.deb
    ```
 
 ## Building from Source

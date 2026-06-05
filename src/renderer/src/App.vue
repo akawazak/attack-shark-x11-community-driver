@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive, watch, toRaw } from 'vue';
-import { Settings, Zap, Info, ShieldAlert, Keyboard, Plug } from 'lucide-vue-next';
+import { Settings, Zap, Info, ShieldAlert, Keyboard, Plug, MousePointer2 } from 'lucide-vue-next';
 
 import UserPreferences from './components/UserPreferences.vue';
 import DpiSettings from './components/DpiSettings.vue';
@@ -63,22 +63,14 @@ const connect = async (mode: number) => {
 	}
 };
 
-const fetchSummary = async () => {
-	try {
-		const summary = await window.api.getSummary();
-		deviceSummary.value = summary;
-		if (summary) {
-			preferences.value.lightMode = summary.lightMode;
-			preferences.value.ledSpeed = summary.ledSpeed;
-			preferences.value.keyResponse = summary.keyResponse;
-			preferences.value.rgb = summary.rgb;
-			if (summary.sleepTime !== undefined) preferences.value.sleepTime = summary.sleepTime;
-			if (summary.deepSleepTime !== undefined) preferences.value.deepSleepTime = summary.deepSleepTime;
+	const fetchSummary = async () => {
+		try {
+			const summary = await window.api.getSummary();
+			deviceSummary.value = summary;
+		} catch (err) {
+			console.error('Failed to fetch summary:', err);
 		}
-	} catch (err) {
-		console.error('Failed to fetch summary:', err);
-	}
-};
+	};
 
 const reset = async () => {
 	if (!confirm('Are you sure you want to reset to factory defaults? This cannot be undone.')) return;
@@ -111,6 +103,7 @@ onMounted(async () => {
 	const settings = await window.api.getSettings();
 	if (settings) {
 		if (settings.lastTab) activeTab.value = settings.lastTab;
+		if (settings.connectionMode) connectionMode.value = settings.connectionMode;
 		if (settings.preferences) {
 			Object.assign(preferences.value, settings.preferences);
 		}
@@ -118,12 +111,13 @@ onMounted(async () => {
 });
 
 watch(
-	() => [activeTab.value, preferences.value],
+	() => [activeTab.value, preferences.value, connectionMode.value],
 	async () => {
 		const settings = await window.api.getSettings();
 		await window.api.saveSettings({
 			...settings,
 			lastTab: activeTab.value,
+			connectionMode: connectionMode.value,
 			preferences: JSON.parse(JSON.stringify(toRaw(preferences.value))),
 		});
 	},
@@ -147,7 +141,7 @@ watch(
 
 			<nav class="flex-1 px-4 space-y-2">
 				<button
-					v-if="connectionMode !== 'Wired'"
+					v-if="!(connectionMode === 'Wired' && isConnected)"
 					@click="activeTab = 'preferences'"
 					:class="[
 						'w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
@@ -267,7 +261,7 @@ watch(
 
 			<div v-else>
 				<!-- Preferences Content -->
-				<div v-if="activeTab === 'preferences' && connectionMode !== 'Wired'">
+				<div v-if="activeTab === 'preferences' && !(connectionMode === 'Wired' && isConnected)">
 					<UserPreferences v-model="preferences" :isConnected="isConnected" />
 				</div>
 

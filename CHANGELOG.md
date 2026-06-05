@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.6] - 2026-06-05
+
+### Added
+- Full configuration persistence across restarts (preferences, DPI, language, theme, tab, connection mode)
+- Type coercion for malformed numeric settings (prevents blank selects from stale string-typed values)
+- `connectionMode` persistence in `settings.json`
+
+### Changed
+- `fetchSummary()` no longer overwrites user preferences with device-reported values
+- Theme toggle now cycles through Dark, Light, and Cappuccino themes
+
+### Fixed
+- BaseSelect.vue type-preserving `v-model` emission (string → number coercion)
+- UserPreferences.vue form initialization with fallback defaults
+- settingsManager.ts deep merge preserves missing nested fields
+- Wired mode preferences tab visibility (only hidden when actually connected)
+
 ## [1.2.5] - 2026-06-05
 
 ### Added
