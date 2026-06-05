@@ -574,12 +574,20 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 			this.cachedUserPreferences = { ...options };
 		}
 
+		const payload = builder.build(this.connectionMode);
+		console.log(
+			`[DEBUG] setUserPreferences mode=${this.connectionMode} payload=${payload.toString('hex')} len=${payload.length}`,
+		);
+
 		return this.controlTransfer({
-			data: builder.build(this.connectionMode),
+			data: payload,
 			bmRequestType: builder.bmRequestType,
 			bRequest: builder.bRequest,
 			wValue: builder.wValue,
 			wIndex: builder.wIndex,
+		}).then((result) => {
+			console.log(`[DEBUG] setUserPreferences result=${result}`);
+			return result;
 		});
 	}
 
