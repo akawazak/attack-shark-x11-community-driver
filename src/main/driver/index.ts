@@ -1,11 +1,7 @@
 export { AttackSharkX11 } from './core/AttackSharkX11.js';
 export type { BaseProtocolBuilder } from './core/BaseProtocolBuilder.js';
-export {
-	CustomMacroBuilder,
-	CUSTOM_MACRO_BUTTONS,
-	MacroMode,
-	MouseMacroEvent,
-} from './protocols/CustomMacroBuilder.js';
+export { CustomMacroBuilder, MouseMacroEvent } from './protocols/CustomMacroBuilder.js';
+export { CUSTOM_MACRO_BUTTONS, MacroMode } from '../../shared/macro-types.js';
 export type { CustomMacroBuilderOptions } from './protocols/CustomMacroBuilder.js';
 export { DpiBuilder } from './protocols/DpiBuilder.js';
 export type { DpiBuilderOptions, StageIndex } from './protocols/DpiBuilder.js';

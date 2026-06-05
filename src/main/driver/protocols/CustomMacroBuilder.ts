@@ -3,21 +3,7 @@ import { ParamsError } from '../errors.js';
 import { Button, type ConnectionMode } from '../types.js';
 import { type KeyCode, MacroName, macroTemplates, type MacroTuple } from '../../../shared/macro-templates.js';
 import { type MacroBuilderOptions, MacrosBuilder } from './MacrosBuilder.js';
-
-export enum CUSTOM_MACRO_BUTTONS {
-	LEFT_BUTTON = 0x01,
-	RIGHT_BUTTON = 0x02,
-	MIDDLE_BUTTON = 0x03,
-	EXTRA_BUTTON_4 = 0x07,
-	EXTRA_BUTTON_5 = 0x08,
-}
-
-// noinspection JSUnusedGlobalSymbols
-export enum MacroMode {
-	THE_NUMBER_OF_TIME_TO_PLAY = 0x00,
-	ANY_KEY_PRESS_TO_STOP_PLAYING = 0x01,
-	PRESS_AND_HOLD_RELEASE_STOP = 0x02,
-}
+import { MacroMode, CUSTOM_MACRO_BUTTONS } from '../../../shared/macro-types.js';
 
 // noinspection JSUnusedGlobalSymbols
 export enum MouseMacroEvent {
@@ -187,7 +173,7 @@ export class CustomMacroBuilder implements BaseProtocolBuilder {
 		let buttonMap: CUSTOM_MACRO_BUTTONS;
 		let macroTemplate: MacroTuple;
 
-		switch (button) {
+		switch (Number(button)) {
 			case Button.LEFT:
 				buttonMap = CUSTOM_MACRO_BUTTONS.LEFT_BUTTON;
 				macroTemplate = macroTemplates[MacroName.CUSTOM_MACRO_LEFT_BUTTON];

@@ -14,6 +14,7 @@ const api = {
 	setUserPreferences: (prefs: unknown): Promise<number> => ipcRenderer.invoke('set-user-preferences', prefs),
 	setMacro: (config: unknown): Promise<number> => ipcRenderer.invoke('set-macro', config),
 	setCustomMacro: (options: unknown): Promise<void> => ipcRenderer.invoke('set-custom-macro', options),
+	sendCustomMacro: (packets: Buffer[]): Promise<void> => ipcRenderer.invoke('send-custom-macro', packets),
 	listProfiles: (): Promise<string[]> => ipcRenderer.invoke('list-profiles'),
 	saveProfile: (name: string, data: unknown): Promise<void> => ipcRenderer.invoke('save-profile', name, data),
 	loadProfile: (name: string): Promise<unknown> => ipcRenderer.invoke('load-profile', name),

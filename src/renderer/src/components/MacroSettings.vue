@@ -7,6 +7,7 @@ import { useDebounce } from '../composables/useDebounce';
 import BaseSelect from './BaseSelect.vue';
 import Card from './Card.vue';
 import StatusMessage from './StatusMessage.vue';
+import CustomMacroEditor from './CustomMacroEditor.vue';
 
 const props = defineProps<{
 	isConnected: boolean;
@@ -33,7 +34,9 @@ const buttons = computed(() => [
 	{ label: t('macros.buttons.dpi'), value: 5 },
 ]);
 
-const selectedButton = ref(3); // Default to Forward Button
+const selectedButton = ref(3);
+
+const activeTab = ref<'templates' | 'custom'>('templates');
 
 const applyMacro = async () => {
 	if (!props.isConnected) return;
@@ -41,11 +44,8 @@ const applyMacro = async () => {
 	statusMessage.value = t('macros.applying');
 
 	try {
-		// Map the selected button to the template macro
 		const macroConfig: Record<string, MacroTuple> = {};
 
-		// Button mapping: 0=LEFT, 1=RIGHT, 2=MIDDLE, 3=FORWARD, 4=BACKWARD, 5=DPI
-		// The MacroBuilderOptions expects keys like 'left', 'right', 'forward', 'backward'
 		const buttonMap: Record<number, string> = {
 			0: 'left',
 			1: 'right',
@@ -83,33 +83,67 @@ watch([selectedTemplate, selectedButton], () => debouncedApplyMacro());
 			</h2>
 		</div>
 
+		<!-- Tab Navigation -->
+		<div class="flex gap-2 bg-[var(--bg-primary)] p-1 rounded-lg border border-[var(--border-card)]">
+			<button
+				@click="activeTab = 'templates'"
+				:class="[
+					'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all',
+					activeTab === 'templates'
+						? 'bg-shark-primary text-white shadow-sm'
+						: 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
+				]"
+			>
+				{{ $t('macros.macroTemplate') }}
+			</button>
+			<button
+				@click="activeTab = 'custom'"
+				:class="[
+					'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all',
+					activeTab === 'custom'
+						? 'bg-shark-primary text-white shadow-sm'
+						: 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
+				]"
+			>
+				{{ $t('macros.customMacro') }}
+			</button>
+		</div>
+
 		<StatusMessage :message="statusMessage" :type="statusType" />
 
-		<Card>
-			<template #title>
-				<Keyboard class="w-6 h-6 text-shark-primary" />
-				{{ $t('macros.configTitle') }}
-			</template>
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-				<div>
-					<label class="block text-sm font-medium text-[var(--text-primary)] opacity-70 mb-2">{{
-						$t('macros.targetButton')
-					}}</label>
-					<BaseSelect v-model="selectedButton">
-						<option v-for="btn in buttons" :key="btn.value" :value="btn.value">{{ btn.label }}</option>
-					</BaseSelect>
+		<!-- Template Macros Tab -->
+		<div v-if="activeTab === 'templates'">
+			<Card>
+				<template #title>
+					<Keyboard class="w-6 h-6 text-shark-primary" />
+					{{ $t('macros.configTitle') }}
+				</template>
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+					<div>
+						<label class="block text-sm font-medium text-[var(--text-primary)] opacity-70 mb-2">{{
+							$t('macros.targetButton')
+						}}</label>
+						<BaseSelect v-model="selectedButton">
+							<option v-for="btn in buttons" :key="btn.value" :value="btn.value">{{ btn.label }}</option>
+						</BaseSelect>
+					</div>
+					<div>
+						<label class="block text-sm font-medium text-[var(--text-primary)] opacity-70 mb-2">{{
+							$t('macros.macroTemplate')
+						}}</label>
+						<BaseSelect v-model="selectedTemplate">
+							<option v-for="opt in templateOptions" :key="opt.value" :value="opt.value">
+								{{ opt.label }}
+							</option>
+						</BaseSelect>
+					</div>
 				</div>
-				<div>
-					<label class="block text-sm font-medium text-[var(--text-primary)] opacity-70 mb-2">{{
-						$t('macros.macroTemplate')
-					}}</label>
-					<BaseSelect v-model="selectedTemplate">
-						<option v-for="opt in templateOptions" :key="opt.value" :value="opt.value">
-							{{ opt.label }}
-						</option>
-					</BaseSelect>
-				</div>
-			</div>
-		</Card>
+			</Card>
+		</div>
+
+		<!-- Custom Macro Tab -->
+		<div v-else>
+			<CustomMacroEditor :isConnected="props.isConnected" />
+		</div>
 	</div>
 </template>

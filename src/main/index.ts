@@ -206,6 +206,22 @@ app.whenReady().then(() => {
 		return driver.setCustomMacro(builder);
 	});
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	ipcMain.handle('send-custom-macro', (_, config: { targetButton: number; playOptions: any; events: any[] }) => {
+		if (!driver) throw new Error('Device not connected');
+
+		const builder = new CustomMacroBuilder({
+			targetButton: config.targetButton,
+			playOptions: config.playOptions,
+		});
+
+		for (const event of config.events) {
+			builder.addEvent(event.keyCode, event.delayMs, event.isRelease);
+		}
+
+		return driver.setCustomMacro(builder);
+	});
+
 	ipcMain.handle('list-profiles', () => profileManager.listProfiles());
 	ipcMain.handle('save-profile', (_, name: string, data: unknown) => profileManager.saveProfile(name, data));
 	ipcMain.handle('load-profile', (_, name: string) => profileManager.loadProfile(name));

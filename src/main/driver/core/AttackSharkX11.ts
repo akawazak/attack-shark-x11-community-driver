@@ -4,7 +4,8 @@ import type { Device, InEndpoint, Interface } from 'usb';
 import * as usb from 'usb';
 import { EventEmitter } from 'node:events';
 import { ControlTransferError, DeviceError, DriverError, InterfaceError, TimeoutError } from '../errors.js';
-import { CustomMacroBuilder, type CustomMacroBuilderOptions, MacroMode } from '../protocols/CustomMacroBuilder.js';
+import { CustomMacroBuilder, type CustomMacroBuilderOptions } from '../protocols/CustomMacroBuilder.js';
+import { MacroMode } from '../../../shared/macro-types.js';
 import { DpiBuilder, type DpiBuilderOptions } from '../protocols/DpiBuilder.js';
 import { InternalStateResetReportBuilder } from '../protocols/InternalStateResetReportBuilder.js';
 import { type MacroBuilderOptions, MacrosBuilder } from '../protocols/MacrosBuilder.js';
@@ -443,42 +444,86 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 	 * await driver.setCustomMacro(builder);
 	 * ```
 	 */
-	async setCustomMacro(options: CustomMacroBuilder | CustomMacroBuilderOptions): Promise<void> {
+	async setCustomMacro(options: CustomMacroBuilder | CustomMacroBuilderOptions): Promise<void>;
+	async setCustomMacro(packets: [Buffer, Buffer, Buffer, Buffer]): Promise<void>;
+	async setCustomMacro(
+		optionsOrPackets: CustomMacroBuilder | CustomMacroBuilderOptions | [Buffer, Buffer, Buffer, Buffer],
+	): Promise<void> {
 		this.checkIsOpen();
-		const builder = options instanceof CustomMacroBuilder ? options : new CustomMacroBuilder(options);
-		const [setMacroBuffer, secondPacket, thirdPacket, fourthPacket] = builder.build(this.connectionMode);
 
-		await this.controlTransfer({
-			data: setMacroBuffer,
-			bmRequestType: 0x21,
-			bRequest: 0x09,
-			wValue: 0x0308,
-			wIndex: 2,
-		});
+		if (Array.isArray(optionsOrPackets)) {
+			const [setMacroBuffer, secondPacket, thirdPacket, fourthPacket] = optionsOrPackets;
 
-		await this.controlTransfer({
-			data: secondPacket,
-			bmRequestType: builder.bmRequestType,
-			bRequest: builder.bRequest,
-			wValue: builder.wValue,
-			wIndex: builder.wIndex,
-		});
+			await this.controlTransfer({
+				data: setMacroBuffer,
+				bmRequestType: 0x21,
+				bRequest: 0x09,
+				wValue: 0x0308,
+				wIndex: 2,
+			});
 
-		await this.controlTransfer({
-			data: thirdPacket,
-			bmRequestType: builder.bmRequestType,
-			bRequest: builder.bRequest,
-			wValue: builder.wValue,
-			wIndex: builder.wIndex,
-		});
+			await this.controlTransfer({
+				data: secondPacket,
+				bmRequestType: 0x21,
+				bRequest: 0x09,
+				wValue: 0x0309,
+				wIndex: 2,
+			});
 
-		await this.controlTransfer({
-			data: fourthPacket,
-			bmRequestType: builder.bmRequestType,
-			bRequest: builder.bRequest,
-			wValue: builder.wValue,
-			wIndex: builder.wIndex,
-		});
+			await this.controlTransfer({
+				data: thirdPacket,
+				bmRequestType: 0x21,
+				bRequest: 0x09,
+				wValue: 0x0309,
+				wIndex: 2,
+			});
+
+			await this.controlTransfer({
+				data: fourthPacket,
+				bmRequestType: 0x21,
+				bRequest: 0x09,
+				wValue: 0x0309,
+				wIndex: 2,
+			});
+		} else {
+			const builder =
+				optionsOrPackets instanceof CustomMacroBuilder
+					? optionsOrPackets
+					: new CustomMacroBuilder(optionsOrPackets);
+			const [setMacroBuffer, secondPacket, thirdPacket, fourthPacket] = builder.build(this.connectionMode);
+
+			await this.controlTransfer({
+				data: setMacroBuffer,
+				bmRequestType: 0x21,
+				bRequest: 0x09,
+				wValue: 0x0308,
+				wIndex: 2,
+			});
+
+			await this.controlTransfer({
+				data: secondPacket,
+				bmRequestType: builder.bmRequestType,
+				bRequest: builder.bRequest,
+				wValue: builder.wValue,
+				wIndex: builder.wIndex,
+			});
+
+			await this.controlTransfer({
+				data: thirdPacket,
+				bmRequestType: builder.bmRequestType,
+				bRequest: builder.bRequest,
+				wValue: builder.wValue,
+				wIndex: builder.wIndex,
+			});
+
+			await this.controlTransfer({
+				data: fourthPacket,
+				bmRequestType: builder.bmRequestType,
+				bRequest: builder.bRequest,
+				wValue: builder.wValue,
+				wIndex: builder.wIndex,
+			});
+		}
 	}
 
 	/**

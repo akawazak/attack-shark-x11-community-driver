@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive, watch, toRaw } from 'vue';
-import { MousePointer2, Settings, Zap, Info, ShieldAlert, Keyboard } from 'lucide-vue-next';
+import { MousePointer2, Settings, Zap, Info, ShieldAlert, Keyboard, Plug } from 'lucide-vue-next';
 import UserPreferences from './components/UserPreferences.vue';
 import DpiSettings from './components/DpiSettings.vue';
 import MacroSettings from './components/MacroSettings.vue';
@@ -176,17 +176,21 @@ watch(
 			<div class="p-4 bg-slate-950 border-t border-slate-800 space-y-2">
 				<LanguageSelector />
 				<div v-if="isConnected" class="flex items-center gap-3 text-sm">
-					<div class="relative w-8 h-4 border border-slate-600 rounded-sm p-0.5">
-						<div
-							class="h-full rounded-xs"
-							:class="batteryLevel <= 20 ? 'bg-red-500' : 'bg-green-700'"
-							:style="{ width: `${batteryLevel > 0 ? batteryLevel : 0}%` }"
-						></div>
-						<div class="absolute -right-1 top-1 w-1 h-2 bg-slate-600 rounded-r-sm"></div>
-					</div>
-					<span class="text-slate-300 font-medium">{{
-						batteryLevel >= 0 ? `${batteryLevel}%` : $t('connection.wiredDisplay')
-					}}</span>
+					<template v-if="batteryLevel >= 0">
+						<div class="relative w-8 h-4 border border-slate-600 rounded-sm p-0.5">
+							<div
+								class="h-full rounded-xs"
+								:class="batteryLevel <= 20 ? 'bg-red-500' : 'bg-green-700'"
+								:style="{ width: `${batteryLevel > 0 ? batteryLevel : 0}%` }"
+							></div>
+							<div class="absolute -right-1 top-1 w-1 h-2 bg-slate-600 rounded-r-sm"></div>
+						</div>
+						<span class="text-slate-300 font-medium">{{ batteryLevel }}%</span>
+					</template>
+					<template v-else>
+						<Plug class="w-4 h-4 text-slate-400" />
+						<span class="text-slate-300 font-medium">{{ $t('connection.wiredDisplay') }}</span>
+					</template>
 				</div>
 				<div v-else class="text-xs text-slate-500 italic">{{ $t('connection.disconnected') }}</div>
 				<div class="text-[10px] text-slate-600 mt-2">v{{ version }}</div>
