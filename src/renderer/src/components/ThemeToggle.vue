@@ -1,35 +1,45 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import { Sun, Moon } from 'lucide-vue-next'
+import { ref, onMounted } from 'vue'
+import { Moon, Sun, Coffee } from 'lucide-vue-next'
 
-const isLight = ref(false)
+type Theme = 'dark' | 'light' | 'cappuccino'
+const themes: Theme[] = ['dark', 'light', 'cappuccino']
+const themeIndex = ref(0)
+
+const themeClasses: Record<Theme, string> = {
+  dark: 'text-[var(--sidebar-text)]',
+  light: 'text-amber-500',
+  cappuccino: 'text-[var(--shark-primary)]',
+}
+
+const themeIcons: Record<Theme, any> = {
+  dark: Moon,
+  light: Sun,
+  cappuccino: Coffee,
+}
 
 const toggleTheme = () => {
-  isLight.value = !isLight.value
-  document.documentElement.classList.toggle('light', isLight.value)
-  localStorage.setItem('theme', isLight.value ? 'light' : 'dark')
+  themeIndex.value = (themeIndex.value + 1) % themes.length
+  const theme = themes[themeIndex.value]
+  document.documentElement.className = theme === 'dark' ? '' : theme
+  localStorage.setItem('theme', theme)
 }
 
 onMounted(() => {
-  const savedTheme = localStorage.getItem('theme')
-  if (savedTheme === 'light') {
-    isLight.value = true
-    document.documentElement.classList.add('light')
+  const savedTheme = localStorage.getItem('theme') as Theme | null
+  if (savedTheme && themes.includes(savedTheme)) {
+    themeIndex.value = themes.indexOf(savedTheme)
+    document.documentElement.className = savedTheme === 'dark' ? '' : savedTheme
   }
-})
-
-watch(isLight, (val) => {
-  document.documentElement.classList.toggle('light', val)
 })
 </script>
 
 <template>
   <button
     @click="toggleTheme"
-    class="p-2 rounded-lg transition-all hover:bg-[var(--surface-hover)]"
-    :title="isLight ? 'Switch to dark mode' : 'Switch to light mode'"
+    class="p-2 rounded-lg transition-all hover:bg-[var(--sidebar-hover)]"
+    :title="'Switch to ' + themes[(themeIndex + 1) % themes.length]"
   >
-    <Sun v-if="isLight" class="w-5 h-5 text-amber-500" />
-    <Moon v-else class="w-5 h-5 text-slate-400" />
+    <component :is="themeIcons[themes[themeIndex]]" :class="['w-5 h-5', themeClasses[themes[themeIndex]]]" />
   </button>
 </template>

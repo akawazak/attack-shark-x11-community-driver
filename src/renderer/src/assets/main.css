@@ -2,28 +2,17 @@
 @import 'tailwindcss';
 
 @theme {
-	/* Primary palette */
-	--color-shark-primary: #3b82f6;
+	/* Static semantic colors (don't change between themes) */
 	--color-shark-primary-light: #60a5fa;
 	--color-shark-primary-dark: #2563eb;
-
-	/* Accent palette */
-	--color-shark-accent: #22c55e;
 	--color-shark-accent-light: #4ade80;
 	--color-shark-accent-dark: #16a34a;
-
-	/* Surface colors */
-	--color-shark-dark: #0f172a;
 	--color-shark-surface-1: #1e293b;
 	--color-shark-surface-2: #334155;
 	--color-shark-surface-3: #475569;
-
-	/* Text colors */
 	--color-shark-text: #f8fafc;
 	--color-shark-text-secondary: #94a3b8;
 	--color-shark-text-muted: #64748b;
-
-	/* Semantic colors */
 	--color-shark-error: #ef4444;
 	--color-shark-error-light: #fca5a5;
 	--color-shark-warning: #f59e0b;
@@ -34,23 +23,30 @@
 	--color-shark-info-light: #60a5fa;
 }
 
-/* Light mode theme */
-html.light {
-	--bg-primary: #f8fafc;
-	--bg-card: #ffffff;
-	--bg-elevated: #f1f5f9;
-	--text-primary: #0f172a;
-	--text-secondary: #334155;
-	--text-muted: #64748b;
-	--border-color: #e2e8f0;
-	--border-hover: #cbd5e1;
-	--surface-hover: #f1f5f9;
-	--shadow-color: rgba(0, 0, 0, 0.1);
-	--focus-ring: rgba(59, 130, 246, 0.5);
+/* Dynamic theme colors resolved at runtime via CSS variables */
+@theme inline {
+	--color-shark-primary: var(--shark-primary);
+	--color-shark-accent: var(--shark-accent);
+	--color-shark-dark: var(--shark-dark);
 }
 
-/* Dark mode theme (default) */
+/* --- Dark mode (default) --- */
 :root {
+	--sidebar-bg: #0f172a;
+	--sidebar-border: #1e293b;
+	--sidebar-hover: #1e293b;
+	--sidebar-footer-bg: #020617;
+	--sidebar-footer-border: #1e293b;
+	--sidebar-text: #94a3b8;
+	--sidebar-text-dim: #475569;
+	--sidebar-text-muted: #334155;
+	--sidebar-text-footer: #cbd5e1;
+
+	--connection-card-bg: #1e293b;
+	--connection-card-border: #334155;
+	--connection-card-hover: #334155;
+	--connection-card-text: #64748b;
+
 	--bg-primary: #0f172a;
 	--bg-card: #1e293b;
 	--bg-elevated: #334155;
@@ -63,14 +59,83 @@ html.light {
 	--shadow-color: rgba(0, 0, 0, 0.3);
 	--focus-ring: rgba(59, 130, 246, 0.5);
 
-	/* Backward compatibility aliases */
-	--bg-elevated: var(--bg-elevated);
-	--border-card: var(--border-color);
-	--text-tertiary: var(--text-muted);
+	/* Theme accent colors */
 	--shark-primary: #3b82f6;
 	--shark-accent: #22c55e;
 	--shark-dark: #0f172a;
-	--color-accent: #3b82f6;
+
+	/* Backward compatibility aliases */
+	--border-card: var(--border-color);
+	--text-tertiary: var(--text-muted);
+	--color-accent: var(--shark-primary);
+}
+
+/* --- Light mode --- */
+html.light {
+	--sidebar-bg: #f1f5f9;
+	--sidebar-border: #e2e8f0;
+	--sidebar-hover: #e2e8f0;
+	--sidebar-footer-bg: #e2e8f0;
+	--sidebar-footer-border: #e2e8f0;
+	--sidebar-text: #64748b;
+	--sidebar-text-dim: #94a3b8;
+	--sidebar-text-muted: #cbd5e1;
+	--sidebar-text-footer: #334155;
+
+	--connection-card-bg: #ffffff;
+	--connection-card-border: #e2e8f0;
+	--connection-card-hover: #f1f5f9;
+	--connection-card-text: #64748b;
+
+	--bg-primary: #f8fafc;
+	--bg-card: #ffffff;
+	--bg-elevated: #f1f5f9;
+	--text-primary: #0f172a;
+	--text-secondary: #334155;
+	--text-muted: #64748b;
+	--border-color: #e2e8f0;
+	--border-hover: #cbd5e1;
+	--surface-hover: #f1f5f9;
+	--shadow-color: rgba(0, 0, 0, 0.1);
+	--focus-ring: rgba(59, 130, 246, 0.5);
+
+	--shark-primary: #3b82f6;
+	--shark-accent: #22c55e;
+	--shark-dark: #0f172a;
+}
+
+/* --- Cappuccino mode --- */
+html.cappuccino {
+	--sidebar-bg: #e8ddd0;
+	--sidebar-border: #d4c5a9;
+	--sidebar-hover: #ede6dd;
+	--sidebar-footer-bg: #d4c5a9;
+	--sidebar-footer-border: #d4c5a9;
+	--sidebar-text: #7a6a5d;
+	--sidebar-text-dim: #a39589;
+	--sidebar-text-muted: #d4c5a9;
+	--sidebar-text-footer: #3d2b1f;
+
+	--connection-card-bg: #ffffff;
+	--connection-card-border: #e8ddd0;
+	--connection-card-hover: #f5f0eb;
+	--connection-card-text: #a39589;
+
+	--bg-primary: #f5f0eb;
+	--bg-card: #ffffff;
+	--bg-elevated: #ede6dd;
+	--text-primary: #3d2b1f;
+	--text-secondary: #7a6a5d;
+	--text-muted: #a39589;
+	--border-color: #e8ddd0;
+	--border-hover: #d4c5a9;
+	--surface-hover: #ede6dd;
+	--shadow-color: rgba(0, 0, 0, 0.08);
+	--focus-ring: rgba(139, 94, 60, 0.4);
+
+	--shark-primary: #8b5e3c;
+	--shark-accent: #6d4c2e;
+	--shark-dark: #4a3728;
 }
 
 body {
@@ -106,6 +171,10 @@ body {
 html.light #sidebar::before {
 	mix-blend-mode: multiply;
 	opacity: 0.3;
+}
+
+html.cappuccino #sidebar::before {
+	opacity: 0.15;
 }
 
 input[type='range']::-webkit-slider-thumb {

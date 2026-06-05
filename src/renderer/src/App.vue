@@ -128,7 +128,7 @@ watch(
 <template>
 	<div class="flex h-full">
 		<!-- Sidebar -->
-		<div id="sidebar" class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
+		<div id="sidebar" class="w-64 bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)] flex flex-col">
 			<div class="p-6">
 				<h1 class="text-xl font-bold flex items-center gap-2 text-shark-primary">
 					<MousePointer2 class="w-6 h-6" />
@@ -143,7 +143,7 @@ watch(
 						'w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
 						activeTab === 'preferences'
 							? 'bg-shark-primary/20 text-shark-primary'
-							: 'hover:bg-slate-800 text-slate-400',
+							: 'hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text)]',
 					]"
 				>
 					<Settings class="w-5 h-5" /> {{ $t('sidebar.preferences') }}
@@ -154,7 +154,7 @@ watch(
 						'w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
 						activeTab === 'dpi'
 							? 'bg-shark-primary/20 text-shark-primary'
-							: 'hover:bg-slate-800 text-slate-400',
+							: 'hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text)]',
 					]"
 				>
 					<Zap class="w-5 h-5" /> {{ $t('sidebar.dpi') }}
@@ -165,7 +165,7 @@ watch(
 						'w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
 						activeTab === 'macros'
 							? 'bg-shark-primary/20 text-shark-primary'
-							: 'hover:bg-slate-800 text-slate-400',
+							: 'hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text)]',
 					]"
 				>
 					<Keyboard class="w-5 h-5" /> {{ $t('sidebar.macros') }}
@@ -176,72 +176,72 @@ watch(
 						'w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
 						activeTab === 'device-info'
 							? 'bg-shark-primary/20 text-shark-primary'
-							: 'hover:bg-slate-800 text-slate-400',
+							: 'hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text)]',
 					]"
 				>
 					<ShieldAlert class="w-5 h-5" /> {{ $t('sidebar.deviceInfo') }}
 				</button>
 			</nav>
 
-			<div class="p-4 bg-slate-950 border-t border-slate-800 space-y-2">
+			<div class="p-4 bg-[var(--sidebar-footer-bg)] border-t border-[var(--sidebar-footer-border)] space-y-2">
 				<div class="flex items-center justify-between">
 					<LanguageSelector />
 					<ThemeToggle />
 				</div>
 				<div v-if="isConnected" class="flex items-center gap-3 text-sm">
 					<template v-if="batteryLevel >= 0">
-						<div class="relative w-8 h-4 border border-slate-600 rounded-sm p-0.5">
+						<div class="relative w-8 h-4 border border-[var(--sidebar-border)] rounded-sm p-0.5">
 							<div
 								class="h-full rounded-xs"
 								:class="batteryLevel <= 20 ? 'bg-red-500' : 'bg-green-700'"
 								:style="{ width: `${batteryLevel > 0 ? batteryLevel : 0}%` }"
 							></div>
-							<div class="absolute -right-1 top-1 w-1 h-2 bg-slate-600 rounded-r-sm"></div>
+							<div class="absolute -right-1 top-1 w-1 h-2 bg-[var(--sidebar-text-dim)] rounded-r-sm"></div>
 						</div>
-						<span class="text-slate-300 font-medium">{{ batteryLevel }}%</span>
+						<span class="text-[var(--sidebar-text-footer)] font-medium">{{ batteryLevel }}%</span>
 					</template>
 					<template v-else>
-						<Plug class="w-4 h-4 text-slate-400" />
-						<span class="text-slate-300 font-medium">{{ $t('connection.wiredDisplay') }}</span>
+						<Plug class="w-4 h-4 text-[var(--sidebar-text)]" />
+						<span class="text-[var(--sidebar-text-footer)] font-medium">{{ $t('connection.wiredDisplay') }}</span>
 					</template>
 				</div>
-				<div v-else class="text-xs text-slate-500 italic">{{ $t('connection.disconnected') }}</div>
-				<div class="text-[10px] text-slate-600 mt-2">v{{ version }}</div>
+				<div v-else class="text-xs text-[var(--sidebar-text-muted)] italic">{{ $t('connection.disconnected') }}</div>
+				<div class="text-[10px] text-[var(--sidebar-text-dim)] mt-2">v{{ version }}</div>
 			</div>
 		</div>
 
 		<!-- Main Content -->
-		<main class="flex-1 overflow-y-auto p-8 bg-shark-dark">
+		<main class="flex-1 overflow-y-auto p-8 bg-[var(--bg-primary)]">
 			<div
 				v-if="!isConnected"
 				class="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto"
 			>
-				<div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-6">
-					<MousePointer2 class="w-10 h-10 text-slate-600" />
+				<div class="w-20 h-20 bg-[var(--bg-elevated)] rounded-full flex items-center justify-center mb-6">
+					<MousePointer2 class="w-10 h-10 text-[var(--text-muted)]" />
 				</div>
 				<h2 class="text-2xl font-bold mb-2">{{ $t('connection.title') }}</h2>
-				<p class="text-slate-400 mb-8">{{ $t('connection.description') }}</p>
+				<p class="text-[var(--text-secondary)] mb-8">{{ $t('connection.description') }}</p>
 
 				<div class="grid grid-cols-2 gap-4 w-full">
 					<button
 						@click="connect(0xfa60)"
-						class="bg-slate-800 hover:bg-slate-700 p-4 rounded-xl border border-slate-700 transition-all group"
+						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-4 rounded-xl border border-[var(--connection-card-border)] transition-all group"
 					>
-						<Zap class="w-8 h-8 mx-auto mb-2 text-slate-400 group-hover:text-shark-primary" />
+						<Zap class="w-8 h-8 mx-auto mb-2 text-[var(--connection-card-text)] group-hover:text-shark-primary" />
 						<span class="block font-semibold">{{ $t('connection.adapter') }}</span>
 					</button>
 					<button
 						@click="connect(0xfa55)"
-						class="bg-slate-800 hover:bg-slate-700 p-4 rounded-xl border border-slate-700 transition-all group"
+						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-4 rounded-xl border border-[var(--connection-card-border)] transition-all group"
 					>
-						<ShieldAlert class="w-8 h-8 mx-auto mb-2 text-slate-400 group-hover:text-shark-primary" />
+						<ShieldAlert class="w-8 h-8 mx-auto mb-2 text-[var(--connection-card-text)] group-hover:text-shark-primary" />
 						<span class="block font-semibold">{{ $t('connection.wired') }}</span>
 					</button>
 				</div>
 
 				<button
 					@click="window.location.reload()"
-					class="mt-8 text-xs text-slate-600 hover:text-slate-400 flex items-center gap-1 transition-colors"
+					class="mt-8 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1 transition-colors"
 				>
 					<Info class="w-3 h-3" /> {{ $t('connection.forceRefresh') }}
 				</button>
