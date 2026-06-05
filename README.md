@@ -105,6 +105,27 @@ bun test
 
 The test suite covers protocol builders, driver core, utilities, and validation logic (137 tests across 13 files).
 
+## Device Specifications
+
+| Specification | Details |
+|---------------|---------|
+| **Model** | Attack Shark X11 |
+| **Sensor** | PixArt PAW3311 |
+| **Max DPI** | 22,000 (6 adjustable levels) |
+| **Polling Rate** | 125 Hz - 1000 Hz |
+| **Weight** | ~63g |
+| **Battery Life** | Up to 65 hours |
+| **Charge Time** | 2-3 hours |
+| **Connectivity** | Wired / 2.4GHz Wireless / Bluetooth (tri-mode) |
+| **Switches** | HUANO |
+| **Encoder** | TTC |
+| **MCU** | Broadcom |
+| **Charging Dock** | Magnetic RGB dock included |
+| **Grip Styles** | Palm, Claw, Fingertip |
+| **Shell** | Solid (non-honeycomb) |
+| **Vendor ID** | 0x1d57 |
+| **Product IDs** | 0xfa60 (wireless), 0xfa55 (wired) |
+
 ## Supported Hardware
 
 | Device           | Mode            | Status     |
