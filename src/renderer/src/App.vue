@@ -58,7 +58,16 @@ const connect = async (mode: number) => {
 
 const fetchSummary = async () => {
 	try {
-		deviceSummary.value = await window.api.getSummary();
+		const summary = await window.api.getSummary();
+		deviceSummary.value = summary;
+		if (summary) {
+			preferences.value.lightMode = summary.lightMode;
+			preferences.value.ledSpeed = summary.ledSpeed;
+			preferences.value.keyResponse = summary.keyResponse;
+			preferences.value.rgb = summary.rgb;
+			if (summary.sleepTime !== undefined) preferences.value.sleepTime = summary.sleepTime;
+			if (summary.deepSleepTime !== undefined) preferences.value.deepSleepTime = summary.deepSleepTime;
+		}
 	} catch (err) {
 		console.error('Failed to fetch summary:', err);
 	}

@@ -154,8 +154,19 @@ app.whenReady().then(() => {
 		try {
 			const isWired = driver.connectionMode === ConnectionMode.Wired;
 
-			// Wired mode does not support GET_REPORT — skip read to avoid pipe stall
-			if (isWired) return null;
+			// Wired mode does not support GET_REPORT — use cached preferences
+			if (isWired) {
+				const cached = driver.getCachedUserPreferences();
+				if (!cached) return null;
+				return {
+					lightMode: cached.lightMode ?? 0,
+					ledSpeed: cached.ledSpeed ?? 3,
+					rgb: cached.rgb ?? { r: 0, g: 0, b: 0 },
+					sleepTime: cached.sleepTime ?? 0.5,
+					keyResponse: cached.keyResponse ?? 4,
+					deepSleepTime: cached.deepSleepTime ?? 10,
+				};
+			}
 
 			const prefs = await driver.controlTransfer({
 				bmRequestType: 0xa1,
@@ -170,11 +181,17 @@ app.whenReady().then(() => {
 				return null;
 			}
 
+			const configByte = prefs[4] ?? 0;
+			const hardwareSpeed = configByte & 0x0f;
+			const ledSpeed = (6 - hardwareSpeed) as 1 | 2 | 3 | 4 | 5;
+
 			return {
-				ledSpeed: prefs[4] ?? 0,
 				lightMode: prefs[3] ?? 0,
-				keyResponse: prefs[11] ?? 0,
-				rgb: { r: prefs[12] ?? 0, g: prefs[13] ?? 0, b: prefs[14] ?? 0 },
+				ledSpeed: ledSpeed >= 1 && ledSpeed <= 5 ? ledSpeed : 3,
+				rgb: { r: prefs[6] ?? 0, g: prefs[7] ?? 0, b: prefs[8] ?? 0 },
+				sleepTime: (prefs[9] ?? 1) / 2,
+				keyResponse: prefs[10] ?? 4,
+				deepSleepTime: Math.max(1, Math.min(60, Math.round(((prefs[5] ?? 0xa8) - 0x08) / 0x10))),
 			};
 		} catch (e) {
 			console.error('Failed to fetch device summary:', e);

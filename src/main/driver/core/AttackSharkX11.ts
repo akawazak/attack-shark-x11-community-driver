@@ -62,6 +62,7 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 	private isOpen: boolean = false;
 	private lastBattery: number = -1;
 	private logger: Logger;
+	private cachedUserPreferences: UserPreferencesBuilderOptions | null = null;
 
 	/**
 	 * @param options Configuration options for the driver
@@ -568,6 +569,11 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 		this.checkIsOpen();
 		const builder = options instanceof UserPreferencesBuilder ? options : new UserPreferencesBuilder(options);
 
+		// Cache the plain options for wired mode read-back
+		if (!(options instanceof UserPreferencesBuilder)) {
+			this.cachedUserPreferences = { ...options };
+		}
+
 		return this.controlTransfer({
 			data: builder.build(this.connectionMode),
 			bmRequestType: builder.bmRequestType,
@@ -575,6 +581,14 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 			wValue: builder.wValue,
 			wIndex: builder.wIndex,
 		});
+	}
+
+	/**
+	 * Returns cached user preferences (set via setUserPreferences).
+	 * Used in wired mode where GET_REPORT is not available.
+	 */
+	getCachedUserPreferences(): UserPreferencesBuilderOptions | null {
+		return this.cachedUserPreferences;
 	}
 
 	sendInternalStateResetReportBuilder(): Promise<number> {
