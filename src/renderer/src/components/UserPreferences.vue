@@ -22,6 +22,16 @@ export interface UserPreferences {
 
 const { t } = useI18n();
 
+const DEFAULT_PREFS: UserPreferences = {
+	lightMode: 0x20,
+	ledSpeed: 2,
+	keyResponse: 4,
+	pollingRate: 1000,
+	sleepTime: 2,
+	deepSleepTime: 10,
+	rgb: { r: 255, g: 0, b: 255 },
+};
+
 const props = defineProps<{
 	isConnected: boolean;
 	modelValue: UserPreferences;
@@ -29,7 +39,7 @@ const props = defineProps<{
 
 const emit = defineEmits(['update:modelValue']);
 
-const form = reactive<UserPreferences>({ ...props.modelValue });
+const form = reactive<UserPreferences>({ ...DEFAULT_PREFS, ...props.modelValue });
 
 watch(
 	() => props.modelValue,
@@ -97,17 +107,24 @@ const saveNewProfile = async () => {
 		deepSleepTime: form.deepSleepTime,
 		rgb: { ...form.rgb },
 	};
+	console.log(`[Profile] Saving "${newProfileName.value}":`, JSON.stringify(plainPrefs));
 	await window.api.saveProfile(newProfileName.value, plainPrefs);
 	newProfileName.value = '';
 	await loadProfilesList();
 };
 
 const applyProfile = async (name: string) => {
+	console.log(`[Profile] Loading profile "${name}"...`);
 	const data = await window.api.loadProfile(name);
+	console.log(`[Profile] Loaded data:`, JSON.stringify(data));
 	if (data) {
 		const prefs = data as UserPreferences;
+		console.log(`[Profile] Object.assign with:`, JSON.stringify(prefs));
+		console.log(`[Profile] Form before assign - ledSpeed:${form.ledSpeed} lightMode:${form.lightMode} keyResponse:${form.keyResponse} pollingRate:${form.pollingRate} sleepTime:${form.sleepTime} deepSleepTime:${form.deepSleepTime} rgb:${JSON.stringify(form.rgb)}`);
 		Object.assign(form, prefs);
+		console.log(`[Profile] Form after assign - ledSpeed:${form.ledSpeed} lightMode:${form.lightMode} keyResponse:${form.keyResponse} pollingRate:${form.pollingRate} sleepTime:${form.sleepTime} deepSleepTime:${form.deepSleepTime} rgb:${JSON.stringify(form.rgb)}`);
 		await applyPreferences();
+		console.log(`[Profile] applyPreferences completed`);
 	}
 };
 
@@ -140,8 +157,12 @@ async function applyPreferences(showUi = true) {
 			},
 		};
 
+		console.log(`[Prefs] Applying preferences:`, JSON.stringify(plainPrefs));
+		console.log(`[Prefs] Polling rate:`, form.pollingRate);
 		await window.api.setUserPreferences(plainPrefs);
+		console.log(`[Prefs] setUserPreferences done`);
 		await window.api.setPollingRate(form.pollingRate);
+		console.log(`[Prefs] setPollingRate done`);
 
 		if (showUi) {
 			statusMessage.value = 'Settings applied successfully!';

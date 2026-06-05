@@ -3,7 +3,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Zap, Target, Sliders } from 'lucide-vue-next';
 import BaseInput from './BaseInput.vue';
-import BaseSelect from './BaseSelect.vue';
+
 import BaseSlider from './BaseSlider.vue';
 import Card from './Card.vue';
 import StatusMessage from './StatusMessage.vue';
@@ -134,7 +134,7 @@ const dpiStep = 50;
 								@click="dpiConfig.angleSnap = !dpiConfig.angleSnap"
 								:class="[
 									'w-12 h-6 rounded-full p-1 transition-colors',
-									dpiConfig.angleSnap ? 'bg-blue-600' : 'bg-[var(--border-card)]',
+									dpiConfig.angleSnap ? 'bg-shark-primary' : 'bg-[var(--border-card)]',
 								]"
 							>
 								<div
@@ -157,7 +157,7 @@ const dpiStep = 50;
 								@click="dpiConfig.ripplerControl = !dpiConfig.ripplerControl"
 								:class="[
 									'w-12 h-6 rounded-full p-1 transition-colors',
-									dpiConfig.ripplerControl ? 'bg-blue-600' : 'bg-[var(--border-card)]',
+									dpiConfig.ripplerControl ? 'bg-shark-primary' : 'bg-[var(--border-card)]',
 								]"
 							>
 								<div
@@ -175,9 +175,21 @@ const dpiStep = 50;
 					<template #title>
 						<Target class="w-6 h-6 text-shark-primary" /> {{ $t('dpi.activeStage') }}
 					</template>
-					<BaseSelect v-model.number="dpiConfig.activeStage">
-						<option v-for="i in 6" :key="i" :value="i">{{ $t('dpi.stage') }} {{ i }}</option>
-					</BaseSelect>
+					<div class="grid grid-cols-6 gap-2">
+					<button
+						v-for="i in 6"
+						:key="i"
+						:class="[
+							'py-2 rounded-lg text-sm font-medium transition-all',
+							dpiConfig.activeStage === i
+								? 'bg-shark-primary text-white shadow-sm font-bold'
+								: 'bg-[var(--border-card)]/50 text-[var(--text-primary)] opacity-70 hover:opacity-100',
+						]"
+						@click="dpiConfig.activeStage = i"
+					>
+						{{ i }}
+					</button>
+				</div>
 					<p class="text-xs text-[var(--text-primary)] opacity-50 mt-4 text-center">
 						{{ $t('dpi.activeImmediately') }}
 					</p>

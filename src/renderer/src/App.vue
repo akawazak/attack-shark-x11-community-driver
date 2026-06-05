@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive, watch, toRaw } from 'vue';
-import { MousePointer2, Settings, Zap, Info, ShieldAlert, Keyboard, Plug } from 'lucide-vue-next';
+import { Settings, Zap, Info, ShieldAlert, Keyboard, Plug } from 'lucide-vue-next';
+
 import UserPreferences from './components/UserPreferences.vue';
 import DpiSettings from './components/DpiSettings.vue';
 import MacroSettings from './components/MacroSettings.vue';
@@ -11,6 +12,7 @@ import packageInfo from '../../../package.json';
 
 const version = packageInfo.version;
 const isConnected = ref(false);
+const connectionMode = ref<'Adapter' | 'Wired' | null>(null);
 const batteryLevel = ref(-1);
 const preferences = ref({
 	lightMode: 0x20, // Breathing
@@ -43,6 +45,10 @@ const connect = async (mode: number) => {
 		const result = await window.api.connectDevice(mode);
 		if (result.success) {
 			isConnected.value = true;
+			connectionMode.value = mode === 0xfa55 ? 'Wired' : 'Adapter';
+			if (connectionMode.value === 'Wired' && activeTab.value === 'preferences') {
+				activeTab.value = 'dpi';
+			}
 			// Refresh battery explicitly after successful connection
 			await updateBattery();
 			await fetchSummary();
@@ -131,13 +137,17 @@ watch(
 		<div id="sidebar" class="w-64 bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)] flex flex-col">
 			<div class="p-6">
 				<h1 class="text-xl font-bold flex items-center gap-2 text-shark-primary">
-					<MousePointer2 class="w-6 h-6" />
 					{{ $t('sidebar.deviceName') }}
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-6 h-6" fill="currentColor" stroke="none">
+						<path d="M3 12 6 8 9 7 10 2 12 8 17 9 22 6 19 11 22 16 16 16 12 17 8 16 5 15 4 13Z"/>
+						<circle cx="6" cy="10" r=".6"/>
+					</svg>
 				</h1>
 			</div>
 
 			<nav class="flex-1 px-4 space-y-2">
 				<button
+					v-if="connectionMode !== 'Wired'"
 					@click="activeTab = 'preferences'"
 					:class="[
 						'w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
@@ -257,7 +267,7 @@ watch(
 
 			<div v-else>
 				<!-- Preferences Content -->
-				<div v-if="activeTab === 'preferences'">
+				<div v-if="activeTab === 'preferences' && connectionMode !== 'Wired'">
 					<UserPreferences v-model="preferences" :isConnected="isConnected" />
 				</div>
 

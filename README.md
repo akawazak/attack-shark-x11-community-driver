@@ -13,8 +13,11 @@ This repository is an enhanced version of the original driver created by [Haruka
 ## Features Added
 - 🖥️ **Modern User Interface**: Intuitive management of device settings via Electron + Vue 3.
 - 🌐 **i18n Support**: Fully localized UI with English and Spanish translations.
+- 🎨 **Theme Support**: Dark, Light, and Cappuccino themes with full CSS variable integration.
 - 🔄 **Auto-Save**: Debounced auto-save for preferences, DPI, and macro settings.
+- 🔌 **Wired Mode Optimization**: Auto-switches to DPI tab on wired connection; hides irrelevant preferences.
 - 🧪 **Comprehensive Tests**: 137 unit tests covering drivers, builders, utilities, and validation.
+- 🛡️ **Type-Safe Settings Loading**: Prevents NaN corruption from malformed saved data.
 
 ## Core Features
 - ✅ **DPI Configuration**: Customizable stages and active stage selection.
