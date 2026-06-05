@@ -11,7 +11,10 @@ A TypeScript driver for the **Attack Shark X11 gaming mouse**, providing cross-p
 This repository is an enhanced version of the original driver created by [HarukaYamamoto0](https://github.com/HarukaYamamoto0), featuring a new integrated User Interface built with **Electron** for easier device configuration.
 
 ## Features Added
-- 🖥️ **Modern User Interface**: Intuitive management of device settings.
+- 🖥️ **Modern User Interface**: Intuitive management of device settings via Electron + Vue 3.
+- 🌐 **i18n Support**: Fully localized UI with English and Spanish translations.
+- 🔄 **Auto-Save**: Debounced auto-save for preferences, DPI, and macro settings.
+- 🧪 **Comprehensive Tests**: 137 unit tests covering drivers, builders, utilities, and validation.
 
 ## Core Features
 - ✅ **DPI Configuration**: Customizable stages and active stage selection.
@@ -58,21 +61,21 @@ yay -S attack-shark-x11-electron
 You can find pre-built binaries in the [Releases](https://github.com/dressedinblack5/attack-shark-x11-electron/releases) section.
 
 ### AppImage (Portable)
-1. Download the `attack-shark-x11-driver-1.2.0.AppImage` file.
+1. Download the `attack-shark-x11-electron-1.2.1.AppImage` file.
 2. Make it executable:
    ```bash
-   chmod +x attack-shark-x11-driver-1.2.0.AppImage
+   chmod +x attack-shark-x11-electron-1.2.1.AppImage
    ```
 3. Run it:
    ```bash
-   ./attack-shark-x11-driver-1.2.0.AppImage
+   ./attack-shark-x11-electron-1.2.1.AppImage
    ```
 
 ### .deb Package (Debian/Ubuntu/Pop!_OS)
-1. Download the `attack-shark-x11-driver_1.2.0_amd64.deb` file.
+1. Download the `attack-shark-x11-electron-1.2.1.deb` file.
 2. Install it using `apt`:
    ```bash
-   sudo apt install ./attack-shark-x11-driver_1.2.0_amd64.deb
+   sudo apt install ./attack-shark-x11-electron-1.2.1.deb
    ```
 
 ## Building from Source
@@ -93,6 +96,14 @@ To build the application from the source code, ensure you have [Bun](https://bun
    bun run package
    ```
    This will compile the application and generate the distribution files in the `dist` folder.
+
+## Running Tests
+
+```bash
+bun test
+```
+
+The test suite covers protocol builders, driver core, utilities, and validation logic (137 tests across 13 files).
 
 ## Supported Hardware
 
