@@ -38,7 +38,6 @@ const updateProfiles = async () => {
 };
 
 const connect = async (mode: number) => {
-	console.log(`Connecting to mode 0x${mode.toString(16)}...`);
 	connectionError.value = '';
 	try {
 		if (!window.api) throw new Error('IPC API not found.');
@@ -96,7 +95,6 @@ const updateBattery = async () => {
 
 onMounted(async () => {
 	window.api.onBatteryUpdated((level: number) => {
-		console.log('Received battery update:', level);
 		batteryLevel.value = level;
 	});
 

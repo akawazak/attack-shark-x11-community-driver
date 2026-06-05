@@ -392,9 +392,6 @@ export class UserPreferencesBuilder implements BaseProtocolBuilder {
 
 	build(mode: ConnectionMode): Buffer {
 		this.buffer[12] = this.calculateChecksum();
-		console.log(
-			`[DEBUG] UserPrefs build mode=${mode} checksum=${this.buffer[12]} hex=${this.buffer.subarray(0, 13).toString('hex')}`,
-		);
 		if (mode === ConnectionMode.Wired) return this.buffer.subarray(0, 13);
 		else return this.buffer;
 	}

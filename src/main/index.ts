@@ -63,33 +63,24 @@ app.whenReady().then(() => {
 
 	// IPC Handlers
 	ipcMain.handle('connect-device', async (_, mode: ConnectionMode) => {
-		console.log(
-			`Attempting to connect to device in mode: ${mode === ConnectionMode.Adapter ? 'Adapter' : 'Wired'} (0x${mode.toString(16)})`,
-		);
 		try {
 			const oldDriver = driver;
 			if (oldDriver) {
-				console.log('Closing existing driver instance...');
 				await oldDriver.close();
 			}
 
-			console.log('Creating new AttackSharkX11 instance...');
 			const newDriver = new AttackSharkX11({ connectionMode: mode });
 
-			console.log('Opening driver...');
 			await newDriver.open();
 
-			console.log('Driver opened successfully. Setting up listeners...');
 			// Setup battery listener to push to renderer
 			newDriver.on('batteryChange', (level) => {
-				console.log(`Battery level updated: ${level}%`);
 				const windows = BrowserWindow.getAllWindows();
 				windows.forEach((w) => w.webContents.send('battery-updated', level));
 			});
 
 			// eslint-disable-next-line require-atomic-updates
 			driver = newDriver;
-			console.log('Connection complete.');
 			return { success: true };
 		} catch (error: unknown) {
 			const err = error instanceof Error ? error : new Error(String(error));
@@ -257,7 +248,6 @@ app.whenReady().then(() => {
 	app.on('before-quit', async (e) => {
 		if (driver) {
 			e.preventDefault();
-			console.log('Closing driver before quit...');
 			const driverToClose = driver;
 			driver = null;
 			try {

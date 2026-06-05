@@ -575,9 +575,6 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 		}
 
 		const payload = builder.build(this.connectionMode);
-		console.log(
-			`[DEBUG] setUserPreferences mode=${this.connectionMode} payload=${payload.toString('hex')} len=${payload.length}`,
-		);
 
 		return this.controlTransfer({
 			data: payload,
@@ -585,9 +582,6 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 			bRequest: builder.bRequest,
 			wValue: builder.wValue,
 			wIndex: builder.wIndex,
-		}).then((result) => {
-			console.log(`[DEBUG] setUserPreferences result=${result}`);
-			return result;
 		});
 	}
 
