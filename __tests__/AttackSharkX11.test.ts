@@ -151,25 +151,11 @@ describe('AttackSharkX11', () => {
 			Object.defineProperty(process, 'platform', { value: originalPlatform });
 		});
 
-		it('should start interrupt polling when batteryChange listener is added', () => {
+		it('should start interrupt polling on open', () => {
 			const driver = createDriver();
 			driver.open();
 
-			expect(mockInEndpoint.startPoll).not.toHaveBeenCalled();
-
-			driver.on('batteryChange', () => undefined);
 			expect(mockInEndpoint.startPoll).toHaveBeenCalledWith(3, 64);
-		});
-
-		it('should stop polling when last batteryChange listener is removed', () => {
-			const driver = createDriver();
-			driver.open();
-
-			const listener = () => undefined;
-			driver.on('batteryChange', listener);
-			driver.removeListener('batteryChange', listener);
-
-			expect(mockInEndpoint.stopPoll).toHaveBeenCalled();
 		});
 	});
 

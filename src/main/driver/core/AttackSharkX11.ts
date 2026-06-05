@@ -169,6 +169,7 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 		this.interruptEndpoint = interruptEndpoint as InEndpoint;
 		this.setupListeners();
 		this.isOpen = true;
+		this.startPolling();
 		this.logger.info('Device ready.');
 	}
 
@@ -187,18 +188,6 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 		this.interruptEndpoint.on('error', (err: Error) => {
 			this.emit('error', err);
 		});
-
-		this.on('newListener', (event) => {
-			if (event === 'batteryChange' && this.listenerCount('batteryChange') === 0) {
-				this.startPolling();
-			}
-		});
-
-		this.on('removeListener', (event) => {
-			if (event === 'batteryChange' && this.listenerCount('batteryChange') === 0) {
-				this.stopPolling();
-			}
-		});
 	}
 
 	private startPolling(): void {
@@ -215,8 +204,8 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 		if (!this.interruptEndpoint) return;
 		try {
 			this.interruptEndpoint.stopPoll();
-		} catch {
-			/* empty */
+		} catch (e) {
+			this.logger.warn('Error stopping poll (likely already stopped):', e);
 		}
 	}
 
@@ -233,9 +222,7 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 		if (this.interruptEndpoint) {
 			try {
 				this.logger.info('Stopping interrupt polling...');
-				if (this.interruptEndpoint.pollActive) {
-					this.interruptEndpoint.stopPoll();
-				}
+				this.stopPolling();
 				// Give a small amount of time for the last poll to complete/cancel
 				await delay(100);
 			} catch (e) {
