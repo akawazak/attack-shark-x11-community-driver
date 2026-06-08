@@ -1,75 +1,45 @@
-// noinspection JSUnusedGlobalSymbols
-
 import type { Device, InEndpoint, Interface } from 'usb';
 import * as usb from 'usb';
 import { EventEmitter } from 'node:events';
-import { ControlTransferError, DeviceError, DriverError, InterfaceError, TimeoutError } from '../errors.js';
-import { CustomMacroBuilder, type CustomMacroBuilderOptions } from '../protocols/CustomMacroBuilder.js';
-import { MacroMode } from '../../../shared/macro-types.js';
-import { DpiBuilder, type DpiBuilderOptions } from '../protocols/DpiBuilder.js';
-import { InternalStateResetReportBuilder } from '../protocols/InternalStateResetReportBuilder.js';
-import { type MacroBuilderOptions, MacrosBuilder } from '../protocols/MacrosBuilder.js';
-import { PollingRateBuilder, type Rate } from '../protocols/PollingRateBuilder.js';
-import { UserPreferencesBuilder, type UserPreferencesBuilderOptions } from '../protocols/UserPreferencesBuilder.js';
+import { DeviceError, DriverError, InterfaceError, ControlTransferError, TimeoutError } from '../errors.js';
+import type { CustomMacroBuilderOptions, CustomMacroBuilder } from '../protocols/CustomMacroBuilder.js';
+import type { DpiBuilderOptions, DpiBuilder } from '../protocols/DpiBuilder.js';
+import type { MacroBuilderOptions, MacrosBuilder } from '../protocols/MacrosBuilder.js';
+import type { Rate, PollingRateBuilder } from '../protocols/PollingRateBuilder.js';
+import type { UserPreferencesBuilderOptions, UserPreferencesBuilder } from '../protocols/UserPreferencesBuilder.js';
 import {
-	Button,
 	ConnectionMode,
 	type ControlTransferIn,
 	type ControlTransferOptions,
 	type ControlTransferOut,
 	type Logger,
 } from '../types.js';
-import { bufferStartsWith } from '../utils/bufferUtils.js';
 import { delay } from '../utils/delay.js';
 import { ConsoleLogger } from '../logger/index.js';
+import { BatteryMonitor } from './BatteryMonitor.js';
+import { SettingsWriter } from './SettingsWriter.js';
 
 const VID = 0x1d57;
 const DEVICE_INTERFACE = 0x02;
 const INTERRUPT_ENDPOINT = 0x83;
 
-/**
- * Events emitted by the AttackSharkX11 class.
- */
 export interface AttackSharkX11Events {
-	/** Emitted when the battery level changes */
 	batteryChange: [battery: number];
-	/** Emitted when a data monitoring error occurs */
 	error: [error: Error];
 }
 
-/**
- * Main driver for the Attack Shark X11 mouse.
- * This class manages the USB connection, DPI settings, polling rate, macros, and user preferences.
- *
- * @example
- * ```TypeScript
- * const driver = new AttackSharkX11({ connectionMode: ConnectionMode.Adapter });
- * await driver.open();
- * const battery = await driver.getBatteryLevel();
- * console.log(`Battery: ${battery}%`);
- * await driver.close();
- * ```
- */
 export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 	public readonly productId: number;
 	device: Device;
 	deviceInterface!: Interface;
 	interruptEndpoint!: InEndpoint;
-	/**
-	 * Delay in milliseconds between packets to prevent the device from locking up.
-	 */
 	public readonly delayMs: number;
 	private isOpen: boolean = false;
 	private lastBattery: number = -1;
 	private logger: Logger;
-	private cachedUserPreferences: UserPreferencesBuilderOptions | null = null;
+	private batteryMonitor: BatteryMonitor | null = null;
+	private settingsWriter: SettingsWriter;
 
-	/**
-	 * @param options Configuration options for the driver
-	 * @param options.connectionMode Connection mode (Wired or Adapter)
-	 * @param options.logger Optional custom logger
-	 * @param options.delayMs Optional delay in milliseconds between packets to prevent lock-up (default: 250)
-	 */
 	constructor(options: { connectionMode: ConnectionMode; logger?: Logger; delayMs?: number }) {
 		super();
 		if (!options.connectionMode) {
@@ -91,22 +61,19 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 
 		this.device = device;
 		this.productId = device.deviceDescriptor.idProduct;
+
+		this.settingsWriter = new SettingsWriter({
+			controlTransfer: (opts): Promise<number | Buffer> => this.controlTransfer(opts),
+			checkIsOpen: (): void => this.checkIsOpen(),
+			getConnectionMode: (): ConnectionMode => this.connectionMode,
+			getDevice: (): Device => this.device,
+		});
 	}
 
-	/**
-	 * Returns to the current connection mode.
-	 */
 	get connectionMode(): ConnectionMode {
 		return this.productId as ConnectionMode;
 	}
 
-	/**
-	 * Opens the connection to the device and configures the necessary interfaces.
-	 * Claims the USB interface and sets up interrupt listeners.
-	 *
-	 * @throws {DeviceError} If an error occurs while opening the device.
-	 * @throws {InterfaceError} If the required interface is not found or cannot be claimed.
-	 */
 	open(): void {
 		this.logger.info(`Opening USB device VID:${VID.toString(16)} PID:${this.productId.toString(16)}...`);
 
@@ -167,67 +134,38 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 		}
 
 		this.interruptEndpoint = interruptEndpoint as InEndpoint;
-		this.setupListeners();
+
 		this.isOpen = true;
-		this.startPolling();
+
+		this.batteryMonitor = new BatteryMonitor(
+			this.interruptEndpoint,
+			() => this.connectionMode,
+			this.logger,
+			() => this.isOpen,
+		);
+
+		this.batteryMonitor.on('batteryChange', (level) => {
+			this.lastBattery = level;
+			this.emit('batteryChange', level);
+		});
+
+		this.batteryMonitor.on('error', (err) => {
+			this.emit('error', err);
+		});
+
+		this.batteryMonitor.setupListeners();
+		this.batteryMonitor.startPolling();
 		this.logger.info('Device ready.');
 	}
 
-	private setupListeners(): void {
-		this.interruptEndpoint.on('data', (data: Buffer) => {
-			if (bufferStartsWith(data, Buffer.from([0x03, 0x55, 0x40, 0x01]))) {
-				if (data.length < 5) return;
-				const battery = data[4];
-				if (battery !== undefined && battery !== this.lastBattery) {
-					this.lastBattery = battery;
-					this.emit('batteryChange', battery);
-				}
-			}
-		});
-
-		this.interruptEndpoint.on('error', (err: Error) => {
-			this.emit('error', err);
-		});
-	}
-
-	private startPolling(): void {
-		if (!this.isOpen || !this.interruptEndpoint) return;
-		try {
-			const transferSize = this.interruptEndpoint.descriptor.wMaxPacketSize;
-			this.interruptEndpoint.startPoll(3, transferSize);
-		} catch (e) {
-			this.logger.error('Failed to start polling', e);
-		}
-	}
-
-	private stopPolling(): void {
-		if (!this.interruptEndpoint) return;
-		try {
-			this.interruptEndpoint.stopPoll();
-		} catch (e) {
-			this.logger.warn('Error stopping poll (likely already stopped):', e);
-		}
-	}
-
-	/**
-	 * Closes the connection to the device, stops polling, and releases the interfaces.
-	 * It is important to call this method when finishing use to avoid resource leaks.
-	 */
 	async close(): Promise<void> {
 		if (!this.isOpen) return;
 
 		this.logger.info('Closing driver and releasing resources...');
 		this.removeAllListeners();
 
-		if (this.interruptEndpoint) {
-			try {
-				this.logger.info('Stopping interrupt polling...');
-				this.stopPolling();
-				// Give a small amount of time for the last poll to complete/cancel
-				await delay(100);
-			} catch (e) {
-				this.logger.warn('Error while stopping poll', e);
-			}
+		if (this.batteryMonitor) {
+			this.batteryMonitor.destroy();
 		}
 
 		if (this.deviceInterface) {
@@ -270,6 +208,7 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 
 	controlTransfer(options: ControlTransferIn): Promise<Buffer>;
 	controlTransfer(options: ControlTransferOut): Promise<number>;
+	controlTransfer(options: ControlTransferOptions): Promise<number | Buffer>;
 	async controlTransfer(options: ControlTransferOptions): Promise<number | Buffer> {
 		this.checkIsOpen();
 
@@ -298,7 +237,6 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 			);
 		});
 
-		// If it's an output transfer (writing to a device), we apply a delay to prevent packet flooding
 		if (Buffer.isBuffer(options.data)) {
 			await delay(this.delayMs);
 		}
@@ -306,21 +244,13 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 		return result;
 	}
 
-	/**
-	 * Gets the current battery level of the mouse.
-	 * Note that the value is only returned if the mouse is in wireless mode (Adapter).
-	 * In Wired mode, it returns -1.
-	 *
-	 * @param timeoutMs Maximum time to wait for the device response (default: 1000ms).
-	 * @throws {TimeoutError} If the device does not respond within the specified time.
-	 * @returns The battery level in percentage (0-100) or -1 if unavailable.
-	 */
 	getBatteryLevel(timeoutMs = 1000): Promise<number> {
 		this.checkIsOpen();
 
 		return new Promise((resolve, reject) => {
 			if (this.connectionMode === ConnectionMode.Wired) {
-				return resolve(-1); // -1 indicates that it was not possible to get the exact battery status value
+				resolve(-1);
+				return;
 			}
 
 			let finished = false;
@@ -328,7 +258,6 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 			const cleanup = (): void => {
 				if (finished) return;
 				finished = true;
-
 				clearTimeout(timeout);
 				this.removeListener('batteryChange', handleBattery);
 			};
@@ -365,333 +294,62 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 		};
 	}
 
-	/**
-	 * Retrieves device information from USB descriptors.
-	 * @returns Device info object with manufacturer, product name, and USB details
-	 */
-	getDeviceInfo(): {
-		manufacturer: string;
-		product: string;
-		serialNumber: string;
-		vendorId: string;
-		productId: string;
-		bcdDevice: string;
-		connectionMode: string;
-		interfaces: number;
-	} {
-		const descriptor = this.device.deviceDescriptor;
-
-		return {
-			manufacturer: 'Beken',
-			product: 'Attack Shark X11',
-			serialNumber: 'N/A',
-			vendorId: `0x${descriptor.idVendor.toString(16).padStart(4, '0')}`,
-			productId: `0x${descriptor.idProduct.toString(16).padStart(4, '0')}`,
-			bcdDevice: `${(descriptor.bcdDevice >> 8) & 0xff}.${descriptor.bcdDevice & 0xff}`,
-			connectionMode: this.connectionMode === ConnectionMode.Adapter ? 'Wireless (2.4GHz)' : 'Wired (USB)',
-			interfaces: descriptor.bNumConfigurations,
-		};
+	getDeviceInfo(): ReturnType<SettingsWriter['getDeviceInfo']> {
+		return this.settingsWriter.getDeviceInfo();
 	}
 
-	/**
-	 * Sets the polling rate of the mouse.
-	 *
-	 * @param rate A value from the Rate enum or a PollingRateBuilder instance.
-	 * @returns The result of the USB control transfer.
-	 *
-	 * @example
-	 * ```TypeScript
-	 * await driver.setPollingRate(Rate.eSports); // 1000Hz
-	 * ```
-	 */
 	setPollingRate(rate: Rate | PollingRateBuilder): Promise<number> {
-		this.checkIsOpen();
-		const builder = rate instanceof PollingRateBuilder ? rate : new PollingRateBuilder().setRate(rate);
-
-		return this.controlTransfer({
-			data: builder.build(this.connectionMode),
-			bmRequestType: builder.bmRequestType,
-			bRequest: builder.bRequest,
-			wValue: builder.wValue,
-			wIndex: builder.wIndex,
-		});
+		return this.settingsWriter.setPollingRate(rate);
 	}
 
-	/**
-	 * Configures an advanced custom macro with multiple events and repetitions.
-	 *
-	 * @param options CustomMacroBuilder instance or configuration options.
-	 *
-	 * @example
-	 * ```TypeScript
-	 * const builder = new CustomMacroBuilder()
-	 *   .setPlayOptions(MacroMode.THE_NUMBER_OF_TIME_TO_PLAY, 5)
-	 *   .setTargetButton(Button.BACKWARD, macroBuilder)
-	 *   .addEvent(KeyCode.A)
-	 *   .addEvent(KeyCode.A, 10, true); // Release key A after 10ms
-	 * await driver.setCustomMacro(builder);
-	 * ```
-	 */
-	async setCustomMacro(options: CustomMacroBuilder | CustomMacroBuilderOptions): Promise<void>;
-	async setCustomMacro(packets: [Buffer, Buffer, Buffer, Buffer]): Promise<void>;
-	async setCustomMacro(
+	setCustomMacro(options: CustomMacroBuilder | CustomMacroBuilderOptions): Promise<void>;
+	setCustomMacro(packets: [Buffer, Buffer, Buffer, Buffer]): Promise<void>;
+	setCustomMacro(
 		optionsOrPackets: CustomMacroBuilder | CustomMacroBuilderOptions | [Buffer, Buffer, Buffer, Buffer],
 	): Promise<void> {
-		this.checkIsOpen();
-
-		if (Array.isArray(optionsOrPackets)) {
-			const [setMacroBuffer, secondPacket, thirdPacket, fourthPacket] = optionsOrPackets;
-
-			await this.controlTransfer({
-				data: setMacroBuffer,
-				bmRequestType: 0x21,
-				bRequest: 0x09,
-				wValue: 0x0308,
-				wIndex: 2,
-			});
-
-			await this.controlTransfer({
-				data: secondPacket,
-				bmRequestType: 0x21,
-				bRequest: 0x09,
-				wValue: 0x0309,
-				wIndex: 2,
-			});
-
-			await this.controlTransfer({
-				data: thirdPacket,
-				bmRequestType: 0x21,
-				bRequest: 0x09,
-				wValue: 0x0309,
-				wIndex: 2,
-			});
-
-			await this.controlTransfer({
-				data: fourthPacket,
-				bmRequestType: 0x21,
-				bRequest: 0x09,
-				wValue: 0x0309,
-				wIndex: 2,
-			});
-		} else {
-			const builder =
-				optionsOrPackets instanceof CustomMacroBuilder
-					? optionsOrPackets
-					: new CustomMacroBuilder(optionsOrPackets);
-			const [setMacroBuffer, secondPacket, thirdPacket, fourthPacket] = builder.build(this.connectionMode);
-
-			await this.controlTransfer({
-				data: setMacroBuffer,
-				bmRequestType: 0x21,
-				bRequest: 0x09,
-				wValue: 0x0308,
-				wIndex: 2,
-			});
-
-			await this.controlTransfer({
-				data: secondPacket,
-				bmRequestType: builder.bmRequestType,
-				bRequest: builder.bRequest,
-				wValue: builder.wValue,
-				wIndex: builder.wIndex,
-			});
-
-			await this.controlTransfer({
-				data: thirdPacket,
-				bmRequestType: builder.bmRequestType,
-				bRequest: builder.bRequest,
-				wValue: builder.wValue,
-				wIndex: builder.wIndex,
-			});
-
-			await this.controlTransfer({
-				data: fourthPacket,
-				bmRequestType: builder.bmRequestType,
-				bRequest: builder.bRequest,
-				wValue: builder.wValue,
-				wIndex: builder.wIndex,
-			});
-		}
+		return this.settingsWriter.setCustomMacro(optionsOrPackets as never);
 	}
 
-	/**
-	 * Maps mouse buttons to simple macros or keyboard functions.
-	 *
-	 * @param config MacrosBuilder instance or mapping options.
-	 *
-	 * @example
-	 * ```TypeScript
-	 * const macroBuilder = new MacrosBuilder().setMacro(Button.DPI, macroTemplates[MacroName.SHORTCUT_SWAP_WINDOW]);
-	 * await driver.setMacro(macroBuilder);
-	 * ```
-	 */
 	setMacro(config: MacroBuilderOptions | MacrosBuilder): Promise<number> {
-		this.checkIsOpen();
-		const builder = config instanceof MacrosBuilder ? config : new MacrosBuilder(config);
-
-		return this.controlTransfer({
-			data: builder.build(this.connectionMode),
-			bmRequestType: builder.bmRequestType,
-			bRequest: builder.bRequest,
-			wValue: builder.wValue,
-			wIndex: builder.wIndex,
-		});
+		return this.settingsWriter.setMacro(config);
 	}
 
-	/**
-	 * Sets user preferences, such as lighting, key response time, and sleep timers.
-	 *
-	 * @param options UserPreferencesBuilder instance or configuration options.
-	 *
-	 * @example
-	 * ```TypeScript
-	 * await driver.setUserPreferences({
-	 *   lightMode: LightMode.Neon,
-	 *   ledSpeed: 5,
-	 *   keyResponse: 4
-	 * });
-	 * ```
-	 */
 	setUserPreferences(options: UserPreferencesBuilder | UserPreferencesBuilderOptions): Promise<number> {
-		this.checkIsOpen();
-		const builder = options instanceof UserPreferencesBuilder ? options : new UserPreferencesBuilder(options);
-
-		// Cache the plain options for wired mode read-back
-		if (!(options instanceof UserPreferencesBuilder)) {
-			this.cachedUserPreferences = { ...options };
-		}
-
-		const payload = builder.build(this.connectionMode);
-
-		return this.controlTransfer({
-			data: payload,
-			bmRequestType: builder.bmRequestType,
-			bRequest: builder.bRequest,
-			wValue: builder.wValue,
-			wIndex: builder.wIndex,
-		});
+		return this.settingsWriter.setUserPreferences(options);
 	}
 
-	/**
-	 * Returns cached user preferences (set via setUserPreferences).
-	 * Used in wired mode where GET_REPORT is not available.
-	 */
 	getCachedUserPreferences(): UserPreferencesBuilderOptions | null {
-		return this.cachedUserPreferences;
+		return this.settingsWriter.getCachedUserPreferences();
 	}
 
 	sendInternalStateResetReportBuilder(): Promise<number> {
-		this.checkIsOpen();
-		const builder = new InternalStateResetReportBuilder();
-
-		return this.controlTransfer({
-			data: builder.build(this.connectionMode),
-			bmRequestType: builder.bmRequestType,
-			bRequest: builder.bRequest,
-			wValue: builder.wValue,
-			wIndex: builder.wIndex,
-		});
+		return this.settingsWriter.sendInternalStateResetReportBuilder();
 	}
 
 	resetPollingRate(): Promise<number> {
-		this.checkIsOpen();
-		const builder = new PollingRateBuilder();
-
-		return this.controlTransfer({
-			data: builder.build(this.connectionMode),
-			bmRequestType: builder.bmRequestType,
-			bRequest: builder.bRequest,
-			wValue: builder.wValue,
-			wIndex: builder.wIndex,
-		});
+		return this.settingsWriter.resetPollingRate();
 	}
 
-	/**
-	 * Configures the DPI stages and values for the mouse.
-	 *
-	 * @param options DpiBuilder instance or configuration options.
-	 * @returns The result of the USB control transfer.
-	 *
-	 * @example
-	 * ```TypeScript
-	 * const dpiBuilder = new DpiBuilder({
-	 *   dpiValues: [800, 1600, 2400, 3200, 5000, 22000],
-	 *   activeStage: 2
-	 * });
-	 * await driver.setDpi(dpiBuilder);
-	 * ```
-	 */
 	setDpi(options: DpiBuilder | DpiBuilderOptions): Promise<number> {
-		this.checkIsOpen();
-		const builder = options instanceof DpiBuilder ? options : new DpiBuilder(options);
-
-		return this.controlTransfer({
-			data: builder.build(this.connectionMode),
-			bmRequestType: builder.bmRequestType,
-			bRequest: builder.bRequest,
-			wValue: builder.wValue,
-			wIndex: builder.wIndex,
-		});
+		return this.settingsWriter.setDpi(options);
 	}
 
 	resetDpi(): Promise<number> {
-		this.checkIsOpen();
-		const builder = new DpiBuilder();
-
-		return this.controlTransfer({
-			data: builder.build(this.connectionMode),
-			bmRequestType: builder.bmRequestType,
-			bRequest: builder.bRequest,
-			wValue: builder.wValue,
-			wIndex: builder.wIndex,
-		});
+		return this.settingsWriter.resetDpi();
 	}
 
 	resetMacro(): Promise<number> {
-		this.checkIsOpen();
-		const builder = new MacrosBuilder();
-
-		return this.controlTransfer({
-			data: builder.build(this.connectionMode),
-			bmRequestType: builder.bmRequestType,
-			bRequest: builder.bRequest,
-			wValue: builder.wValue,
-			wIndex: builder.wIndex,
-		});
+		return this.settingsWriter.resetMacro();
 	}
 
 	async resetCustomMacro(): Promise<void> {
-		this.checkIsOpen();
-		const builder = new CustomMacroBuilder({
-			playOptions: {
-				mode: MacroMode.THE_NUMBER_OF_TIME_TO_PLAY,
-				times: 1,
-			},
-			targetButton: Button.BACKWARD,
-			macroEvents: [],
-		});
-
-		await this.setCustomMacro(builder);
+		await this.settingsWriter.resetCustomMacro();
 	}
 
 	resetUserPreferences(): Promise<number> {
-		this.checkIsOpen();
-		const builder = new UserPreferencesBuilder().setKeyResponse(8);
-
-		return this.controlTransfer({
-			data: builder.build(this.connectionMode),
-			bmRequestType: builder.bmRequestType,
-			bRequest: builder.bRequest,
-			wValue: builder.wValue,
-			wIndex: builder.wIndex,
-		});
+		return this.settingsWriter.resetUserPreferences();
 	}
 
-	/**
-	 * Resets the mouse to factory settings (all profiles and definitions).
-	 *
-	 * @returns A promise that resolves when the reset is complete.
-	 */
 	async reset(): Promise<void> {
 		this.checkIsOpen();
 		await this.sendInternalStateResetReportBuilder();

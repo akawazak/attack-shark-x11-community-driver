@@ -1,3 +1,4 @@
+import type { Device } from 'usb';
 import { describe, expect, it, vi, beforeEach } from 'bun:test';
 
 const mockInEndpoint = {
@@ -5,11 +6,11 @@ const mockInEndpoint = {
 	descriptor: { wMaxPacketSize: 64 },
 	pollActive: false,
 	listeners: {} as Record<string, Array<(...args: unknown[]) => void>>,
-	on(event: string, cb: (...args: unknown[]) => void) {
+	on(event: string, cb: (...args: unknown[]) => void): void {
 		if (!this.listeners[event]) this.listeners[event] = [];
 		this.listeners[event].push(cb);
 	},
-	emit(event: string, ...args: unknown[]) {
+	emit(event: string, ...args: unknown[]): void {
 		const cbs = this.listeners[event] || [];
 		for (const cb of cbs) cb(...args);
 	},
@@ -25,7 +26,7 @@ const mockInterface = {
 	release: vi.fn((_wait: boolean, cb: (err?: Error) => void) => cb()),
 };
 
-function createMockDevice(productId: number) {
+function createMockDevice(productId: number): Device {
 	return {
 		deviceDescriptor: {
 			idVendor: 0x1d57,
