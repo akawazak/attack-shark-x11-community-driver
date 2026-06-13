@@ -138,6 +138,23 @@ html.cappuccino {
 	--shark-dark: #4a3728;
 }
 
+/* Global smooth transitions for themed properties */
+*,
+*::before,
+*::after {
+	transition-property: background-color, border-color, color, box-shadow;
+	transition-duration: 200ms;
+	transition-timing-function: ease;
+}
+
+/* Exclude transitions from elements that need instant changes */
+input,
+select,
+button,
+a {
+	transition-property: background-color, border-color, color, box-shadow, transform, opacity;
+}
+
 body {
 	background-color: var(--bg-primary);
 	color: var(--text-primary);
@@ -177,6 +194,33 @@ html.cappuccino #sidebar::before {
 	opacity: 0.15;
 }
 
+/* Tab transition animations */
+.fade-slide-enter-active {
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fade-slide-leave-active {
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fade-slide-enter-from {
+	opacity: 0;
+	transform: translateX(16px);
+}
+.fade-slide-leave-to {
+	opacity: 0;
+	transform: translateX(-16px);
+}
+
+/* Sidebar collapse transition */
+.sidebar-collapse-enter-active,
+.sidebar-collapse-leave-active {
+	transition: all 0.3s ease;
+}
+.sidebar-collapse-enter-from,
+.sidebar-collapse-leave-to {
+	width: 4rem;
+}
+
+/* Range slider styling */
 input[type='range']::-webkit-slider-thumb {
 	-webkit-appearance: none;
 	appearance: none;
@@ -187,6 +231,14 @@ input[type='range']::-webkit-slider-thumb {
 	border-radius: 50%;
 	cursor: pointer;
 	box-shadow: 0 0 10px var(--focus-ring);
+	transition:
+		transform 0.15s ease,
+		box-shadow 0.15s ease;
+}
+
+input[type='range']:hover::-webkit-slider-thumb {
+	transform: scale(1.15);
+	box-shadow: 0 0 14px var(--focus-ring);
 }
 
 input[type='range']::-moz-range-thumb {
@@ -197,4 +249,12 @@ input[type='range']::-moz-range-thumb {
 	border-radius: 50%;
 	cursor: pointer;
 	box-shadow: 0 0 10px var(--focus-ring);
+	transition:
+		transform 0.15s ease,
+		box-shadow 0.15s ease;
+}
+
+input[type='range']:hover::-moz-range-thumb {
+	transform: scale(1.15);
+	box-shadow: 0 0 14px var(--focus-ring);
 }

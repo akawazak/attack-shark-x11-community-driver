@@ -32,6 +32,7 @@ interface AppSettings {
 declare global {
 	interface Window {
 		electron: unknown;
+		__preloadLoaded?: boolean;
 		api: {
 			connectDevice: (mode: number) => Promise<{ success: boolean; error?: string }>;
 			getBattery: () => Promise<number>;

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive, watch, toRaw } from 'vue';
-import { Settings, Zap, Info, ShieldAlert, Keyboard, Plug, MousePointer2 } from 'lucide-vue-next';
+import { Settings, Zap, Info, ShieldAlert, Keyboard, MousePointer2, Menu, LayoutDashboard } from 'lucide-vue-next';
 
 import UserPreferences from './components/UserPreferences.vue';
 import DpiSettings from './components/DpiSettings.vue';
@@ -8,12 +8,17 @@ import MacroSettings from './components/MacroSettings.vue';
 import DeviceInfo from './components/DeviceInfo.vue';
 import LanguageSelector from './components/LanguageSelector.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
+import BatteryIndicator from './components/widgets/BatteryIndicator.vue';
+import ToastStack from './components/widgets/ToastStack.vue';
+import { useToast } from './composables/useToast';
 import packageInfo from '../../../package.json';
 
 const version = packageInfo.version;
 const isConnected = ref(false);
 const connectionMode = ref<'Adapter' | 'Wired' | null>(null);
 const batteryLevel = ref(-1);
+const sidebarCollapsed = ref(false);
+const { toasts, removeToast } = useToast();
 const preferences = ref({
 	lightMode: 0x20, // Breathing
 	ledSpeed: 2,
@@ -32,6 +37,19 @@ const deviceSummary = ref<{
 const profiles = ref<string[]>([]);
 const connectionError = ref('');
 const activeTab = ref('preferences');
+
+// Preload diagnostics — remove after debugging
+const preloadStatus = ref<'loading' | 'loaded' | 'missing'>('loading');
+onMounted(() => {
+	// Check after microtask so preload has time to set __preloadLoaded
+	queueMicrotask(() => {
+		if (window.__preloadLoaded && window.api) {
+			preloadStatus.value = 'loaded';
+		} else {
+			preloadStatus.value = 'missing';
+		}
+	});
+});
 
 const updateProfiles = async () => {
 	profiles.value = await window.api.listProfiles();
@@ -94,21 +112,25 @@ const updateBattery = async () => {
 };
 
 onMounted(async () => {
-	window.api.onBatteryUpdated((level: number) => {
-		batteryLevel.value = level;
-	});
+	try {
+		window.api.onBatteryUpdated((level: number) => {
+			batteryLevel.value = level;
+		});
 
-	const settings = await window.api.getSettings();
-	if (settings) {
-		if (settings.lastTab) activeTab.value = settings.lastTab;
-		if (settings.connectionMode) connectionMode.value = settings.connectionMode;
-		if (settings.theme) {
-			localStorage.setItem('theme', settings.theme);
-			document.documentElement.className = settings.theme === 'dark' ? '' : settings.theme;
+		const settings = await window.api.getSettings();
+		if (settings) {
+			if (settings.lastTab) activeTab.value = settings.lastTab;
+			if (settings.connectionMode) connectionMode.value = settings.connectionMode;
+			if (settings.theme) {
+				localStorage.setItem('theme', settings.theme);
+				document.documentElement.className = settings.theme === 'dark' ? '' : settings.theme;
+			}
+			if (settings.preferences) {
+				Object.assign(preferences.value, settings.preferences);
+			}
 		}
-		if (settings.preferences) {
-			Object.assign(preferences.value, settings.preferences);
-		}
+	} catch (err) {
+		console.warn('App initialization skipped (API not available):', err);
 	}
 });
 
@@ -129,98 +151,149 @@ watch(
 </script>
 
 <template>
-	<div class="flex h-full">
+	<!-- Preload diagnostic banner — remove after debugging -->
+	<div
+		v-if="preloadStatus === 'missing'"
+		class="fixed top-0 left-0 right-0 z-50 bg-red-600 text-white text-center py-2 px-4 text-sm font-semibold shadow-lg"
+	>
+		Preload not detected — window.api is undefined. Check DevTools (F12) for [preload] logs.
+	</div>
+	<div
+		v-else-if="preloadStatus === 'loaded'"
+		class="fixed top-0 left-0 right-0 z-50 bg-green-600 text-white text-center py-2 px-4 text-sm font-semibold shadow-lg"
+	>
+		Preload loaded — window.api available ✓
+	</div>
+	<div class="flex h-full" :class="preloadStatus !== 'loaded' ? 'mt-10' : ''">
 		<!-- Sidebar -->
-		<div id="sidebar" class="w-64 bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)] flex flex-col">
-			<div class="p-6">
-				<h1 class="text-xl font-bold flex items-center gap-2 text-shark-primary">
-					{{ $t('sidebar.deviceName') }}
+		<div
+			id="sidebar"
+			:class="[
+				'bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)] flex flex-col transition-all duration-300',
+				sidebarCollapsed ? 'w-16' : 'w-64',
+			]"
+		>
+			<div class="p-6 flex items-center justify-between" :class="sidebarCollapsed ? 'flex-col gap-4' : ''">
+				<template v-if="!sidebarCollapsed">
+					<h1 class="text-xl font-bold flex items-center gap-2 text-shark-primary whitespace-nowrap">
+						{{ $t('sidebar.deviceName') }}
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							class="w-6 h-6"
+							fill="currentColor"
+							stroke="none"
+						>
+							<path d="M3 12 6 8 9 7 10 2 12 8 17 9 22 6 19 11 22 16 16 16 12 17 8 16 5 15 4 13Z" />
+							<circle cx="6" cy="10" r=".6" />
+						</svg>
+					</h1>
+				</template>
+				<template v-else>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						viewBox="0 0 24 24"
-						class="w-6 h-6"
+						class="w-6 h-6 text-shark-primary flex-shrink-0"
 						fill="currentColor"
 						stroke="none"
 					>
 						<path d="M3 12 6 8 9 7 10 2 12 8 17 9 22 6 19 11 22 16 16 16 12 17 8 16 5 15 4 13Z" />
 						<circle cx="6" cy="10" r=".6" />
 					</svg>
-				</h1>
+				</template>
+				<button
+					@click="sidebarCollapsed = !sidebarCollapsed"
+					class="p-1.5 rounded-lg hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text)] transition-colors flex-shrink-0"
+					:title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+				>
+					<Menu class="w-4 h-4" />
+				</button>
 			</div>
 
-			<nav class="flex-1 px-4 space-y-2">
+			<nav class="flex-1 px-4 space-y-2" :class="sidebarCollapsed ? 'flex flex-col items-center' : ''">
+				<button
+					@click="activeTab = 'overview'"
+					:class="[
+						'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
+						sidebarCollapsed ? 'justify-center w-10 h-10 p-0' : 'w-full',
+						activeTab === 'overview'
+							? 'bg-shark-primary/20 text-shark-primary'
+							: 'hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text)]',
+					]"
+					:title="sidebarCollapsed ? 'Overview' : ''"
+				>
+					<LayoutDashboard class="w-5 h-5 flex-shrink-0" />
+					<span v-if="!sidebarCollapsed">Overview</span>
+				</button>
 				<button
 					v-if="!(connectionMode === 'Wired' && isConnected)"
 					@click="activeTab = 'preferences'"
 					:class="[
-						'w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
+						'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
+						sidebarCollapsed ? 'justify-center w-10 h-10 p-0' : 'w-full',
 						activeTab === 'preferences'
 							? 'bg-shark-primary/20 text-shark-primary'
 							: 'hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text)]',
 					]"
+					:title="sidebarCollapsed ? $t('sidebar.preferences') : ''"
 				>
-					<Settings class="w-5 h-5" /> {{ $t('sidebar.preferences') }}
+					<Settings class="w-5 h-5 flex-shrink-0" />
+					<span v-if="!sidebarCollapsed">{{ $t('sidebar.preferences') }}</span>
 				</button>
 				<button
 					@click="activeTab = 'dpi'"
 					:class="[
-						'w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
+						'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
+						sidebarCollapsed ? 'justify-center w-10 h-10 p-0' : 'w-full',
 						activeTab === 'dpi'
 							? 'bg-shark-primary/20 text-shark-primary'
 							: 'hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text)]',
 					]"
+					:title="sidebarCollapsed ? $t('sidebar.dpi') : ''"
 				>
-					<Zap class="w-5 h-5" /> {{ $t('sidebar.dpi') }}
+					<Zap class="w-5 h-5 flex-shrink-0" />
+					<span v-if="!sidebarCollapsed">{{ $t('sidebar.dpi') }}</span>
 				</button>
 				<button
 					@click="activeTab = 'macros'"
 					:class="[
-						'w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
+						'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
+						sidebarCollapsed ? 'justify-center w-10 h-10 p-0' : 'w-full',
 						activeTab === 'macros'
 							? 'bg-shark-primary/20 text-shark-primary'
 							: 'hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text)]',
 					]"
+					:title="sidebarCollapsed ? $t('sidebar.macros') : ''"
 				>
-					<Keyboard class="w-5 h-5" /> {{ $t('sidebar.macros') }}
+					<Keyboard class="w-5 h-5 flex-shrink-0" />
+					<span v-if="!sidebarCollapsed">{{ $t('sidebar.macros') }}</span>
 				</button>
 				<button
 					@click="activeTab = 'device-info'"
 					:class="[
-						'w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
+						'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
+						sidebarCollapsed ? 'justify-center w-10 h-10 p-0' : 'w-full',
 						activeTab === 'device-info'
 							? 'bg-shark-primary/20 text-shark-primary'
 							: 'hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text)]',
 					]"
+					:title="sidebarCollapsed ? $t('sidebar.deviceInfo') : ''"
 				>
-					<ShieldAlert class="w-5 h-5" /> {{ $t('sidebar.deviceInfo') }}
+					<ShieldAlert class="w-5 h-5 flex-shrink-0" />
+					<span v-if="!sidebarCollapsed">{{ $t('sidebar.deviceInfo') }}</span>
 				</button>
 			</nav>
 
-			<div class="p-4 bg-[var(--sidebar-footer-bg)] border-t border-[var(--sidebar-footer-border)] space-y-2">
+			<div
+				v-if="!sidebarCollapsed"
+				class="p-4 bg-[var(--sidebar-footer-bg)] border-t border-[var(--sidebar-footer-border)] space-y-2"
+			>
 				<div class="flex items-center justify-between">
 					<LanguageSelector />
 					<ThemeToggle />
 				</div>
-				<div v-if="isConnected" class="flex items-center gap-3 text-sm">
-					<template v-if="batteryLevel >= 0">
-						<div class="relative w-8 h-4 border border-[var(--sidebar-border)] rounded-sm p-0.5">
-							<div
-								class="h-full rounded-xs"
-								:class="batteryLevel <= 20 ? 'bg-red-500' : 'bg-green-700'"
-								:style="{ width: `${batteryLevel > 0 ? batteryLevel : 0}%` }"
-							></div>
-							<div
-								class="absolute -right-1 top-1 w-1 h-2 bg-[var(--sidebar-text-dim)] rounded-r-sm"
-							></div>
-						</div>
-						<span class="text-[var(--sidebar-text-footer)] font-medium">{{ batteryLevel }}%</span>
-					</template>
-					<template v-else>
-						<Plug class="w-4 h-4 text-[var(--sidebar-text)]" />
-						<span class="text-[var(--sidebar-text-footer)] font-medium">{{
-							$t('connection.wiredDisplay')
-						}}</span>
-					</template>
+				<div v-if="isConnected">
+					<BatteryIndicator :level="batteryLevel" :connected="isConnected" />
 				</div>
 				<div v-else class="text-xs text-[var(--sidebar-text-muted)] italic">
 					{{ $t('connection.disconnected') }}
@@ -278,27 +351,65 @@ watch(
 				</div>
 			</div>
 
-			<div v-else>
-				<!-- Preferences Content -->
-				<div v-if="activeTab === 'preferences' && !(connectionMode === 'Wired' && isConnected)">
-					<UserPreferences v-model="preferences" :isConnected="isConnected" />
-				</div>
+			<Transition v-else name="fade-slide" mode="out-in">
+				<div :key="activeTab">
+					<!-- Overview / Dashboard -->
+					<div v-if="activeTab === 'overview'" class="space-y-6">
+						<h2 class="text-3xl font-bold flex items-center gap-3 text-[var(--text-primary)]">
+							<LayoutDashboard class="w-8 h-8 text-shark-primary" />
+							Overview
+						</h2>
+						<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+							<div
+								class="bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-card)] shadow-md transition-all duration-300 hover:shadow-xl"
+							>
+								<h3 class="text-sm text-[var(--text-secondary)] mb-1">Battery</h3>
+								<p class="text-2xl font-bold text-[var(--text-primary)]">
+									{{ batteryLevel >= 0 ? `${batteryLevel}%` : $t('connection.wiredDisplay') }}
+								</p>
+							</div>
+							<div
+								class="bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-card)] shadow-md transition-all duration-300 hover:shadow-xl"
+							>
+								<h3 class="text-sm text-[var(--text-secondary)] mb-1">Connection</h3>
+								<p class="text-2xl font-bold text-[var(--text-primary)]">
+									{{ connectionMode || 'Adapter' }}
+								</p>
+							</div>
+							<div
+								class="bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-card)] shadow-md transition-all duration-300 hover:shadow-xl"
+							>
+								<h3 class="text-sm text-[var(--text-secondary)] mb-1">LED Mode</h3>
+								<p class="text-2xl font-bold text-[var(--text-primary)]">
+									{{ deviceSummary?.lightMode ?? '-' }}
+								</p>
+							</div>
+						</div>
+					</div>
 
-				<!-- DPI Content -->
-				<div v-if="activeTab === 'dpi'">
-					<DpiSettings :isConnected="isConnected" />
-				</div>
+					<!-- Preferences Content -->
+					<div v-if="activeTab === 'preferences' && !(connectionMode === 'Wired' && isConnected)">
+						<UserPreferences v-model="preferences" :isConnected="isConnected" />
+					</div>
 
-				<!-- Macros Content -->
-				<div v-if="activeTab === 'macros'">
-					<MacroSettings :isConnected="isConnected" />
-				</div>
+					<!-- DPI Content -->
+					<div v-if="activeTab === 'dpi'">
+						<DpiSettings :isConnected="isConnected" />
+					</div>
 
-				<!-- Device Info Content -->
-				<div v-if="activeTab === 'device-info'">
-					<DeviceInfo :isConnected="isConnected" />
+					<!-- Macros Content -->
+					<div v-if="activeTab === 'macros'">
+						<MacroSettings :isConnected="isConnected" />
+					</div>
+
+					<!-- Device Info Content -->
+					<div v-if="activeTab === 'device-info'">
+						<DeviceInfo :isConnected="isConnected" />
+					</div>
 				</div>
-			</div>
+			</Transition>
+
+			<ToastStack :toasts="toasts" @remove="removeToast" />
 		</main>
 	</div>
 </template>
