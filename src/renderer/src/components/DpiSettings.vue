@@ -3,8 +3,8 @@ import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Zap, Target, Sliders } from 'lucide-vue-next';
 import BaseInput from './BaseInput.vue';
-
 import BaseSlider from './BaseSlider.vue';
+import BaseToggle from './base/BaseToggle.vue';
 import Card from './Card.vue';
 import StatusMessage from './StatusMessage.vue';
 import { useDebounce } from '../composables/useDebounce';
@@ -123,51 +123,16 @@ const dpiStep = 50;
 					</template>
 
 					<div class="space-y-6">
-						<div class="flex items-center justify-between gap-4">
-							<div>
-								<div class="font-medium">{{ $t('dpi.angleSnap') }}</div>
-								<div class="text-xs text-[var(--text-primary)] opacity-50">
-									{{ $t('dpi.angleSnapDesc') }}
-								</div>
-							</div>
-							<button
-								@click="dpiConfig.angleSnap = !dpiConfig.angleSnap"
-								:class="[
-									'w-12 h-6 rounded-full p-1 transition-colors',
-									dpiConfig.angleSnap ? 'bg-shark-primary' : 'bg-[var(--border-card)]',
-								]"
-							>
-								<div
-									:class="[
-										'w-4 h-4 bg-white rounded-full transition-transform',
-										dpiConfig.angleSnap ? 'translate-x-6' : 'translate-x-0',
-									]"
-								></div>
-							</button>
-						</div>
-
-						<div class="flex items-center justify-between gap-4">
-							<div>
-								<div class="font-medium">{{ $t('dpi.rippleControl') }}</div>
-								<div class="text-xs text-[var(--text-primary)] opacity-50">
-									{{ $t('dpi.rippleControlDesc') }}
-								</div>
-							</div>
-							<button
-								@click="dpiConfig.ripplerControl = !dpiConfig.ripplerControl"
-								:class="[
-									'w-12 h-6 rounded-full p-1 transition-colors',
-									dpiConfig.ripplerControl ? 'bg-shark-primary' : 'bg-[var(--border-card)]',
-								]"
-							>
-								<div
-									:class="[
-										'w-4 h-4 bg-white rounded-full transition-transform',
-										dpiConfig.ripplerControl ? 'translate-x-6' : 'translate-x-0',
-									]"
-								></div>
-							</button>
-						</div>
+						<BaseToggle
+							v-model="dpiConfig.angleSnap"
+							:label="$t('dpi.angleSnap')"
+							:description="$t('dpi.angleSnapDesc')"
+						/>
+						<BaseToggle
+							v-model="dpiConfig.ripplerControl"
+							:label="$t('dpi.rippleControl')"
+							:description="$t('dpi.rippleControlDesc')"
+						/>
 					</div>
 				</Card>
 

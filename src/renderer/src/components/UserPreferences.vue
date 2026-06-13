@@ -7,6 +7,7 @@ import BaseInput from './BaseInput.vue';
 import BaseSelect from './BaseSelect.vue';
 import BaseSlider from './BaseSlider.vue';
 import Card from './Card.vue';
+import ColorPreview from './widgets/ColorPreview.vue';
 import StatusMessage from './StatusMessage.vue';
 import { useDebounce } from '../composables/useDebounce';
 
@@ -249,39 +250,37 @@ async function applyPreferences(showUi = true) {
 						</div>
 					</div>
 
-					<div class="grid grid-cols-4 gap-2">
-						<div class="col-span-1">
-							<label class="block text-sm font-medium text-[var(--text-primary)] opacity-70 mb-2">{{
-								$t('preferences.color')
-							}}</label>
-							<input
-								type="color"
-								:value="`#${rgb.r.toString(16).padStart(2, '0')}${rgb.g.toString(16).padStart(2, '0')}${rgb.b.toString(16).padStart(2, '0')}`"
-								@input="
-									(e: Event) => {
-										const target = e.target as HTMLInputElement;
-										const hex = target.value;
-										form.rgb.r = parseInt(hex.slice(1, 3), 16);
-										form.rgb.g = parseInt(hex.slice(3, 5), 16);
-										form.rgb.b = parseInt(hex.slice(5, 7), 16);
-									}
-								"
-								class="w-full h-[46px] bg-[var(--bg-primary)] border border-[var(--border-card)] rounded-lg cursor-pointer p-1 transition-all"
-							/>
-						</div>
-						<div class="col-span-1">
+					<div class="flex items-center gap-4 mb-4">
+						<ColorPreview :r="rgb.r" :g="rgb.g" :b="rgb.b" />
+						<input
+							type="color"
+							:value="`#${rgb.r.toString(16).padStart(2, '0')}${rgb.g.toString(16).padStart(2, '0')}${rgb.b.toString(16).padStart(2, '0')}`"
+							@input="
+								(e: Event) => {
+									const target = e.target as HTMLInputElement;
+									const hex = target.value;
+									form.rgb.r = parseInt(hex.slice(1, 3), 16);
+									form.rgb.g = parseInt(hex.slice(3, 5), 16);
+									form.rgb.b = parseInt(hex.slice(5, 7), 16);
+								}
+							"
+							class="w-12 h-[46px] bg-[var(--bg-primary)] border border-[var(--border-card)] rounded-lg cursor-pointer p-1 transition-all"
+						/>
+					</div>
+					<div class="grid grid-cols-3 gap-2">
+						<div>
 							<label class="block text-sm font-medium text-[var(--text-primary)] opacity-70 mb-2">{{
 								$t('preferences.red')
 							}}</label>
 							<BaseInput type="number" v-model.number="rgb.r" min="0" max="255" />
 						</div>
-						<div class="col-span-1">
+						<div>
 							<label class="block text-sm font-medium text-[var(--text-primary)] opacity-70 mb-2">{{
 								$t('preferences.green')
 							}}</label>
 							<BaseInput type="number" v-model.number="rgb.g" min="0" max="255" />
 						</div>
-						<div class="col-span-1">
+						<div>
 							<label class="block text-sm font-medium text-[var(--text-primary)] opacity-70 mb-2">{{
 								$t('preferences.blue')
 							}}</label>
