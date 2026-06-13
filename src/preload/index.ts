@@ -1,6 +1,78 @@
-import { contextBridge, ipcRenderer } from 'electron';
-import { electronAPI } from '@electron-toolkit/preload';
+import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron';
 import type { AppSettings } from '../main/storage/settingsManager.js';
+
+console.log('[preload] script running, contextIsolated:', process.contextIsolated);
+
+/**
+ * Inlined equivalent of @electron-toolkit/preload's electronAPI.
+ * We inline it to avoid require() resolution failures in Electron's
+ * sandboxed preload environment (sandbox: true).
+ */
+const electronAPI = {
+	ipcRenderer: {
+		send(channel: string, ...args: unknown[]): void {
+			ipcRenderer.send(channel, ...args);
+		},
+		invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
+			return ipcRenderer.invoke(channel, ...args);
+		},
+		on(channel: string, listener: (...args: unknown[]) => void): () => void {
+			ipcRenderer.on(channel, listener);
+			return (): void => {
+				ipcRenderer.removeListener(channel, listener);
+			};
+		},
+		once(channel: string, listener: (...args: unknown[]) => void): () => void {
+			ipcRenderer.once(channel, listener);
+			return (): void => {
+				ipcRenderer.removeListener(channel, listener);
+			};
+		},
+		removeListener(channel: string, listener: (...args: unknown[]) => void): void {
+			ipcRenderer.removeListener(channel, listener);
+		},
+		removeAllListeners(channel: string): void {
+			ipcRenderer.removeAllListeners(channel);
+		},
+		sendSync<T>(channel: string, ...args: unknown[]): T {
+			return ipcRenderer.sendSync(channel, ...args);
+		},
+		postMessage(channel: string, message: unknown, transfer?: MessagePort[]): void {
+			ipcRenderer.postMessage(channel, message, transfer);
+		},
+	},
+	webFrame: {
+		insertCSS(css: string): string {
+			return webFrame.insertCSS(css);
+		},
+		setZoomFactor(factor: number): void {
+			if (typeof factor === 'number' && factor > 0) {
+				webFrame.setZoomFactor(factor);
+			}
+		},
+		setZoomLevel(level: number): void {
+			if (typeof level === 'number') {
+				webFrame.setZoomLevel(level);
+			}
+		},
+	},
+	webUtils: {
+		getPathForFile(file: File): string {
+			return webUtils.getPathForFile(file);
+		},
+	},
+	process: {
+		get platform(): string {
+			return process.platform;
+		},
+		get versions(): NodeJS.ProcessVersions {
+			return process.versions;
+		},
+		get env(): NodeJS.ProcessEnv {
+			return { ...process.env };
+		},
+	},
+};
 
 // Custom APIs for renderer
 const api = {
@@ -34,11 +106,20 @@ const api = {
 if (process.contextIsolated) {
 	try {
 		contextBridge.exposeInMainWorld('electron', electronAPI);
+		console.log('[preload] exposed window.electron');
 		contextBridge.exposeInMainWorld('api', api);
+		console.log('[preload] exposed window.api');
 	} catch (error) {
-		console.error(error);
+		console.error('[preload] contextBridge error:', error);
 	}
 } else {
+	console.log('[preload] contextIsolated is false, setting window globals directly');
 	window.electron = electronAPI;
 	window.api = api;
+}
+
+try {
+	contextBridge.exposeInMainWorld('__preloadLoaded', true);
+} catch {
+	/* preload diagnostics flag */
 }
