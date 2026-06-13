@@ -31,7 +31,7 @@ Grab the latest `.AppImage` or `.deb` from the [Releases page](https://github.co
 
 **App features** — Dark/Light/Cappuccino themes, i18n (EN/ES), auto-save, full config persistence across restarts, type-safe settings loading.
 
-**Platform** — Linux, macOS, Windows. 137 tests across 13 files.
+**Platform** — Linux, macOS, Windows. 136 tests across 13 files.
 
 ---
 

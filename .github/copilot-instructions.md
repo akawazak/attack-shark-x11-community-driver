@@ -13,7 +13,7 @@ This is an Electron desktop application that provides a driver and UI for the At
 - **Lint fix**: `bunx eslint . --ext .ts --fix --cache --cache-strategy content`
 - **Format check**: `bunx prettier --check . --cache --cache-strategy content`
 - **Format fix**: `bunx prettier --write . --cache --cache-strategy content`
-- **Type check**: `electron-vite typecheck`
+- **Type check**: `tsc --noEmit`
 
 ## Architecture Overview
 
