@@ -7,10 +7,14 @@ const { locale } = useI18n();
 const currentLanguage = ref('en');
 
 onMounted(async () => {
-	const settings = await window.api.getSettings();
-	if (settings?.language) {
-		currentLanguage.value = settings.language;
-		locale.value = settings.language;
+	try {
+		const settings = await window.api.getSettings();
+		if (settings?.language) {
+			currentLanguage.value = settings.language;
+			locale.value = settings.language;
+		}
+	} catch (err) {
+		console.warn('LanguageSelector init skipped (API not available):', err);
 	}
 });
 
