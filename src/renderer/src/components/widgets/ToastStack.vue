@@ -9,10 +9,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-	<div
-		class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"
-		style="max-width: 360px"
-	>
+	<div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none" style="max-width: 360px">
 		<TransitionGroup name="toast">
 			<div
 				v-for="toast in toasts"

@@ -386,9 +386,15 @@ watch(
 							<div
 								class="bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-card)] shadow-md transition-all duration-300 hover:shadow-xl"
 							>
-								<h3 class="text-sm text-[var(--text-secondary)] mb-1">{{ $t('overview.connection') }}</h3>
+								<h3 class="text-sm text-[var(--text-secondary)] mb-1">
+									{{ $t('overview.connection') }}
+								</h3>
 								<p class="text-2xl font-bold text-[var(--text-primary)]">
-									{{ connectionMode === 'Wired' ? $t('connection.wiredDisplay') : $t('overview.wireless') }}
+									{{
+										connectionMode === 'Wired'
+											? $t('connection.wiredDisplay')
+											: $t('overview.wireless')
+									}}
 								</p>
 							</div>
 							<div

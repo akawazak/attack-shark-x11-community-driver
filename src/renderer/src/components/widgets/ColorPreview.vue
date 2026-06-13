@@ -19,9 +19,6 @@ const isDark = computed(() => props.r * 0.299 + props.g * 0.587 + props.b * 0.11
 			boxShadow: `0 0 20px ${colorString}66, 0 0 40px ${colorString}33`,
 		}"
 	>
-		<div
-			class="absolute inset-1 rounded-full border"
-			:class="isDark ? 'border-white/20' : 'border-black/10'"
-		/>
+		<div class="absolute inset-1 rounded-full border" :class="isDark ? 'border-white/20' : 'border-black/10'" />
 	</div>
 </template>

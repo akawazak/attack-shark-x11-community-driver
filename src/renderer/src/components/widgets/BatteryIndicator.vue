@@ -38,15 +38,9 @@ const glowColor = computed(() => {
 					class="absolute -right-[3px] top-[3px] w-[3px] h-[10px] bg-[var(--sidebar-border)] rounded-r-[2px]"
 				/>
 				<!-- Low battery glow -->
-				<div
-					v-if="level <= 20"
-					class="absolute inset-0 rounded-sm animate-pulse"
-					:class="glowColor"
-				/>
+				<div v-if="level <= 20" class="absolute inset-0 rounded-sm animate-pulse" :class="glowColor" />
 			</div>
-			<span class="text-sm font-medium tabular-nums text-[var(--sidebar-text-footer)]"
-				>{{ level }}%</span
-			>
+			<span class="text-sm font-medium tabular-nums text-[var(--sidebar-text-footer)]">{{ level }}%</span>
 		</template>
 		<template v-else-if="connected">
 			<!-- Wired mode icon -->
