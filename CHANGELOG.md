@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.7] - 2026-06-13
+
+### Fixed
+- Typecheck script: use `tsc --noEmit` instead of `electron-vite typecheck` (the latter doesn't have a typecheck subcommand in v5.0.0)
+- Battery status: always reactive by starting USB polling in `open()`
+- `srcdir` paths now defined inside functions, not at top level
+- PKGBUILD extracted dir: GitHub strips `v` prefix from tag archive
+
+### Refactored
+- Extracted `SettingsWriter` and `BatteryMonitor` from main driver, fixed lint warnings, formatted code
+- Removed 24 debug `console.log` statements
+
+### Changed
+- Theme selection now persists to app settings via IPC
+- Simplified README for readability
+- Updated AUR package metadata (PKGBUILD, .SRCINFO) for v1.2.6
+
 ## [1.2.6] - 2026-06-05
 
 ### Added
