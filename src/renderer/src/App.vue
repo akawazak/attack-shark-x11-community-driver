@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, reactive, watch, toRaw } from 'vue';
+import { ref, computed, onMounted, reactive, watch, toRaw } from 'vue';
 import { Settings, Zap, Info, ShieldAlert, Keyboard, MousePointer2, Menu, LayoutDashboard } from 'lucide-vue-next';
 
 import UserPreferences from './components/UserPreferences.vue';
@@ -11,6 +11,7 @@ import ThemeToggle from './components/ThemeToggle.vue';
 import BatteryIndicator from './components/widgets/BatteryIndicator.vue';
 import ToastStack from './components/widgets/ToastStack.vue';
 import { useToast } from './composables/useToast';
+import { useI18n } from 'vue-i18n';
 import packageInfo from '../../../package.json';
 
 const version = packageInfo.version;
@@ -19,6 +20,7 @@ const connectionMode = ref<'Adapter' | 'Wired' | null>(null);
 const batteryLevel = ref(-1);
 const sidebarCollapsed = ref(false);
 const { toasts, removeToast } = useToast();
+const { t } = useI18n();
 const preferences = ref({
 	lightMode: 0x20, // Breathing
 	ledSpeed: 2,
@@ -34,6 +36,19 @@ const deviceSummary = ref<{
 	keyResponse: number;
 	rgb: { r: number; g: number; b: number };
 } | null>(null);
+const LIGHT_MODE_I18N: Record<number, string> = {
+	0x00: 'preferences.lightModes.off',
+	0x10: 'preferences.lightModes.static',
+	0x20: 'preferences.lightModes.breathing',
+	0x30: 'preferences.lightModes.neon',
+	0x40: 'preferences.lightModes.colorBreathing',
+	0x50: 'preferences.lightModes.staticDpi',
+	0x60: 'preferences.lightModes.breathingDpi',
+};
+const ledModeName = computed(() => {
+	const key = LIGHT_MODE_I18N[preferences.value.lightMode];
+	return key ? t(key) : t('preferences.lightModes.off');
+});
 const profiles = ref<string[]>([]);
 const connectionError = ref('');
 const activeTab = ref('preferences');
@@ -357,13 +372,13 @@ watch(
 					<div v-if="activeTab === 'overview'" class="space-y-6">
 						<h2 class="text-3xl font-bold flex items-center gap-3 text-[var(--text-primary)]">
 							<LayoutDashboard class="w-8 h-8 text-shark-primary" />
-							Overview
+							{{ $t('overview.title') }}
 						</h2>
 						<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 							<div
 								class="bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-card)] shadow-md transition-all duration-300 hover:shadow-xl"
 							>
-								<h3 class="text-sm text-[var(--text-secondary)] mb-1">Battery</h3>
+								<h3 class="text-sm text-[var(--text-secondary)] mb-1">{{ $t('overview.battery') }}</h3>
 								<p class="text-2xl font-bold text-[var(--text-primary)]">
 									{{ batteryLevel >= 0 ? `${batteryLevel}%` : $t('connection.wiredDisplay') }}
 								</p>
@@ -371,17 +386,17 @@ watch(
 							<div
 								class="bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-card)] shadow-md transition-all duration-300 hover:shadow-xl"
 							>
-								<h3 class="text-sm text-[var(--text-secondary)] mb-1">Connection</h3>
+								<h3 class="text-sm text-[var(--text-secondary)] mb-1">{{ $t('overview.connection') }}</h3>
 								<p class="text-2xl font-bold text-[var(--text-primary)]">
-									{{ connectionMode || 'Adapter' }}
+									{{ connectionMode === 'Wired' ? $t('connection.wiredDisplay') : $t('overview.wireless') }}
 								</p>
 							</div>
 							<div
 								class="bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-card)] shadow-md transition-all duration-300 hover:shadow-xl"
 							>
-								<h3 class="text-sm text-[var(--text-secondary)] mb-1">LED Mode</h3>
+								<h3 class="text-sm text-[var(--text-secondary)] mb-1">{{ $t('overview.ledMode') }}</h3>
 								<p class="text-2xl font-bold text-[var(--text-primary)]">
-									{{ deviceSummary?.lightMode ?? '-' }}
+									{{ ledModeName }}
 								</p>
 							</div>
 						</div>

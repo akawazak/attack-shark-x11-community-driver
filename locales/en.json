@@ -120,6 +120,13 @@
 			"dpi": "DPI Button"
 		}
 	},
+	"overview": {
+		"title": "Overview",
+		"battery": "Battery",
+		"connection": "Connection",
+		"ledMode": "LED Mode",
+		"wireless": "2.4GHz"
+	},
 	"deviceInfo": {
 		"title": "Device Information",
 		"refresh": "Refresh",
