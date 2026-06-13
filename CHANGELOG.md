@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.2.8] - 2026-06-13
+
+### Added
+- Reusable UI widgets: `BaseToggle`, `ColorPreview`, `BatteryIndicator`, `ToastStack`, `SkeletonCard`, and `useToast` composable
+- Collapsible sidebar with overview dashboard and tab transitions
+- i18n for the overview section, corrected LED mode name display
+- Preload diagnostics for easier debugging
+- AUR release workflow
+
+### Changed
+- Replaced inline toggles with `BaseToggle` across all settings, added Card hover effect, improved color picker layout
+- Updated CSP to allow WebSocket and Worker connections
+- Security hardening and dependency updates
+
+### Fixed
+- Inlined `@electron-toolkit/preload` to fix sandbox preload resolution on newer Electron
+- Wrapped IPC calls in try/catch in `LanguageSelector` for graceful degradation
+- TruffleHog CI: base/head commit diff detection now uses GitHub context variables
+
+### Chores
+- Formatted Vue components with Prettier
+
 ## [1.2.7] - 2026-06-13
 
 ### Fixed
