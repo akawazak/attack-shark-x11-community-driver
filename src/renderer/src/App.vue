@@ -10,6 +10,8 @@ import LanguageSelector from './components/LanguageSelector.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
 import BatteryIndicator from './components/widgets/BatteryIndicator.vue';
 import ToastStack from './components/widgets/ToastStack.vue';
+import StatusMessage from './components/StatusMessage.vue';
+import BaseButton from './components/BaseButton.vue';
 import { useToast } from './composables/useToast';
 import { useI18n } from 'vue-i18n';
 import packageInfo from '../../../package.json';
@@ -52,18 +54,11 @@ const ledModeName = computed(() => {
 const profiles = ref<string[]>([]);
 const connectionError = ref('');
 const activeTab = ref('preferences');
+const lastMode = ref(0xfa60);
 
-// Preload diagnostics — remove after debugging
-const preloadStatus = ref<'loading' | 'loaded' | 'missing'>('loading');
-onMounted(() => {
-	// Check after microtask so preload has time to set __preloadLoaded
-	queueMicrotask(() => {
-		if (window.__preloadLoaded && window.api) {
-			preloadStatus.value = 'loaded';
-		} else {
-			preloadStatus.value = 'missing';
-		}
-	});
+const isPermissionError = computed(() => {
+	const msg = connectionError.value.toLowerCase();
+	return msg.includes('permission') || msg.includes('eacces') || msg.includes('access');
 });
 
 const updateProfiles = async () => {
@@ -71,6 +66,7 @@ const updateProfiles = async () => {
 };
 
 const connect = async (mode: number) => {
+	lastMode.value = mode;
 	connectionError.value = '';
 	try {
 		if (!window.api) throw new Error('IPC API not found.');
@@ -93,6 +89,10 @@ const connect = async (mode: number) => {
 		console.error('IPC Error:', error);
 		connectionError.value = `Connection Error: ${error.message}`;
 	}
+};
+
+const retryConnection = async () => {
+	await connect(lastMode.value);
 };
 
 const fetchSummary = async () => {
@@ -166,20 +166,7 @@ watch(
 </script>
 
 <template>
-	<!-- Preload diagnostic banner — remove after debugging -->
-	<div
-		v-if="preloadStatus === 'missing'"
-		class="fixed top-0 left-0 right-0 z-50 bg-red-600 text-white text-center py-2 px-4 text-sm font-semibold shadow-lg"
-	>
-		Preload not detected — window.api is undefined. Check DevTools (F12) for [preload] logs.
-	</div>
-	<div
-		v-else-if="preloadStatus === 'loaded'"
-		class="fixed top-0 left-0 right-0 z-50 bg-green-600 text-white text-center py-2 px-4 text-sm font-semibold shadow-lg"
-	>
-		Preload loaded — window.api available ✓
-	</div>
-	<div class="flex h-full" :class="preloadStatus !== 'loaded' ? 'mt-10' : ''">
+	<div class="flex h-full">
 		<!-- Sidebar -->
 		<div
 			id="sidebar"
@@ -321,49 +308,80 @@ watch(
 		<main class="flex-1 overflow-y-auto p-8 bg-[var(--bg-primary)]">
 			<div
 				v-if="!isConnected"
-				class="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto"
+				class="h-full flex flex-col items-center justify-center text-center max-w-lg mx-auto px-4"
 			>
-				<div class="w-20 h-20 bg-[var(--bg-elevated)] rounded-full flex items-center justify-center mb-6">
-					<MousePointer2 class="w-10 h-10 text-[var(--text-muted)]" />
+				<!-- Device icon with subtle glow ring -->
+				<div
+					class="w-24 h-24 bg-[var(--bg-elevated)] rounded-full flex items-center justify-center mb-6 ring-4 ring-shark-primary/10"
+				>
+					<MousePointer2 class="w-12 h-12 text-[var(--text-muted)]" />
 				</div>
-				<h2 class="text-2xl font-bold mb-2">{{ $t('connection.title') }}</h2>
-				<p class="text-[var(--text-secondary)] mb-8">{{ $t('connection.description') }}</p>
 
-				<div class="grid grid-cols-2 gap-4 w-full">
+				<h2 class="text-2xl font-bold mb-2 text-[var(--text-primary)]">
+					{{ $t('connection.title') }}
+				</h2>
+				<p class="text-[var(--text-secondary)] mb-8 max-w-sm">
+					{{ $t('connection.description') }}
+				</p>
+
+				<!-- Connection mode selection cards -->
+				<div class="grid grid-cols-2 gap-4 w-full max-w-sm">
 					<button
 						@click="connect(0xfa60)"
-						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-4 rounded-xl border border-[var(--connection-card-border)] transition-all group"
+						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-5 rounded-xl border border-[var(--connection-card-border)] transition-all group flex flex-col items-center"
+						aria-label="Connect via 2.4GHz wireless adapter"
 					>
 						<Zap
-							class="w-8 h-8 mx-auto mb-2 text-[var(--connection-card-text)] group-hover:text-shark-primary"
+							class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary transition-colors"
 						/>
-						<span class="block font-semibold">{{ $t('connection.adapter') }}</span>
+						<span class="block font-semibold text-[var(--text-primary)]">{{
+							$t('connection.adapter')
+						}}</span>
+						<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
+							$t('connection.adapterDesc')
+						}}</span>
 					</button>
 					<button
 						@click="connect(0xfa55)"
-						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-4 rounded-xl border border-[var(--connection-card-border)] transition-all group"
+						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-5 rounded-xl border border-[var(--connection-card-border)] transition-all group flex flex-col items-center"
+						aria-label="Connect via USB cable"
 					>
 						<ShieldAlert
-							class="w-8 h-8 mx-auto mb-2 text-[var(--connection-card-text)] group-hover:text-shark-primary"
+							class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary transition-colors"
 						/>
-						<span class="block font-semibold">{{ $t('connection.wired') }}</span>
+						<span class="block font-semibold text-[var(--text-primary)]">{{
+							$t('connection.wired')
+						}}</span>
+						<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
+							$t('connection.wiredDesc')
+						}}</span>
 					</button>
 				</div>
 
+				<!-- Error state with StatusMessage component and retry -->
+				<div v-if="connectionError" class="mt-6 w-full max-w-sm space-y-3">
+					<StatusMessage :message="connectionError" type="error" />
+					<div v-if="isPermissionError" class="text-xs text-[var(--text-muted)] bg-[var(--bg-elevated)] p-3 rounded-lg">
+						{{ $t('connection.udevTip') }}
+					</div>
+					<BaseButton
+						@click="retryConnection"
+						variant="green"
+						class="w-full"
+						:aria-label="'Retry connection in ' + (connectionMode === 'Wired' ? 'wired' : 'wireless') + ' mode'"
+					>
+						{{ $t('connection.retry') }}
+					</BaseButton>
+				</div>
+
+				<!-- Force refresh link -->
 				<button
 					@click="window.location.reload()"
 					class="mt-8 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1 transition-colors"
+					aria-label="Force refresh the application"
 				>
 					<Info class="w-3 h-3" /> {{ $t('connection.forceRefresh') }}
 				</button>
-
-				<div
-					v-if="connectionError"
-					class="mt-6 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg"
-				>
-					{{ connectionError }}
-					<p class="text-[10px] mt-2 opacity-50">{{ $t('connection.errorTip') }}</p>
-				</div>
 			</div>
 
 			<Transition v-else name="fade-slide" mode="out-in">
