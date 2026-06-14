@@ -10,6 +10,6 @@ pkgbase = attack-shark-x11-electron
 	depends = libusb
 	options = !strip
 	source = https://github.com/dressedinblack5/attack-shark-x11-electron/archive/refs/tags/v1.2.9.tar.gz
-	sha256sums = SKIP
+	sha256sums = bfe0e207ee02b1b3439741c652968b3b6ad32108644ab587446bc04e28485ef0
 
 pkgname = attack-shark-x11-electron
