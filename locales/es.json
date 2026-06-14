@@ -31,13 +31,17 @@
 	},
 	"connection": {
 		"title": "Conecta tu X11",
-		"description": "Por favor selecciona el modo de conexión para configurar tu dispositivo.",
+		"description": "Elige cómo conectar tu mouse para comenzar la configuración.",
 		"adapter": "Adaptador 2.4G",
+		"adapterDesc": "Conecta mediante el adaptador inalámbrico 2.4GHz incluido",
 		"wired": "Modo Cable",
+		"wiredDesc": "Conecta mediante cable USB para carga y configuración",
 		"forceRefresh": "Forzar actualización",
+		"retry": "Reintentar Conexión",
 		"disconnected": "Dispositivo Desconectado",
 		"wiredDisplay": "Cable",
-		"errorTip": "Consejo: Si el dispositivo está ocupado, intenta desconectarlo y volver a conectarlo."
+		"errorTip": "Consejo: Si el dispositivo está ocupado, intenta desconectarlo y volver a conectarlo.",
+		"udevTip": "Problema de permisos detectado. Asegúrate de configurar las reglas udev (ver README) o ejecuta la app con los permisos adecuados."
 	},
 	"preferences": {
 		"title": "Preferencias de Usuario",
