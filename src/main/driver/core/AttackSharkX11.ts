@@ -18,6 +18,7 @@ import { delay } from '../utils/delay.js';
 import { ConsoleLogger } from '../logger/index.js';
 import { BatteryMonitor } from './BatteryMonitor.js';
 import { SettingsWriter } from './SettingsWriter.js';
+import type { DeviceDriver } from './DeviceDriver.js';
 
 const VID = 0x1d57;
 const DEVICE_INTERFACE = 0x02;
@@ -28,7 +29,7 @@ export interface AttackSharkX11Events {
 	error: [error: Error];
 }
 
-export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
+export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implements DeviceDriver {
 	public readonly productId: number;
 	device: Device;
 	deviceInterface!: Interface;

@@ -1,5 +1,7 @@
 export { AttackSharkX11 } from './core/AttackSharkX11.js';
+export type { DeviceDriver } from './core/DeviceDriver.js';
 export type { BaseProtocolBuilder } from './core/BaseProtocolBuilder.js';
+export type { BatteryMonitorConfig } from './core/BatteryMonitor.js';
 export { CustomMacroBuilder, MouseMacroEvent } from './protocols/CustomMacroBuilder.js';
 export { CUSTOM_MACRO_BUTTONS, MacroMode } from '../../shared/macro-types.js';
 export type { CustomMacroBuilderOptions } from './protocols/CustomMacroBuilder.js';
@@ -20,7 +22,7 @@ export type {
 	SleepTime,
 	RGB,
 } from './protocols/UserPreferencesBuilder.js';
-export { ConnectionMode, Button } from './types.js';
+export { ConnectionMode, DeviceModel, Button, resolveDeviceModel } from './types.js';
 export type { ControlTransferIn, ControlTransferOut, ControlTransferOptions, Logger, LogLevel } from './types.js';
 export { delay } from './utils/delay.js';
 export { ConsoleLogger, logger } from './logger/index.js';

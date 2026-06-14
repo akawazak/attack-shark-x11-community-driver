@@ -4,8 +4,36 @@
 export enum ConnectionMode {
 	/** Wireless mode via 2.4GHz adapter */
 	Adapter = 0xfa60,
-	/** Wired mode via USB cable */
+	/** Wired mode via USB cable (Attack Shark X11) */
 	Wired = 0xfa55,
+	/** Wired mode via USB cable (Attack Shark R1) */
+	R1Wired = 0xfa61,
+}
+
+/**
+ * Known device models supported by the driver framework.
+ */
+export enum DeviceModel {
+	/** Attack Shark X11 */
+	X11 = 'X11',
+	/** Attack Shark R1 */
+	R1 = 'R1',
+}
+
+/**
+ * Resolves the device model from a USB product ID.
+ * Returns `null` when the PID is ambiguous (e.g. wireless adapter shared across models).
+ */
+export function resolveDeviceModel(productId: number): DeviceModel | null {
+	switch (productId) {
+		case ConnectionMode.Wired:
+			return DeviceModel.X11;
+		case ConnectionMode.R1Wired:
+			return DeviceModel.R1;
+		default:
+			// Wireless adapter PID (0xfa60) is shared — ambiguous without user input
+			return null;
+	}
 }
 
 /**
