@@ -349,9 +349,7 @@ watch(
 						<ShieldAlert
 							class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary transition-colors"
 						/>
-						<span class="block font-semibold text-[var(--text-primary)]">{{
-							$t('connection.wired')
-						}}</span>
+						<span class="block font-semibold text-[var(--text-primary)]">{{ $t('connection.wired') }}</span>
 						<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
 							$t('connection.wiredDesc')
 						}}</span>
@@ -361,14 +359,19 @@ watch(
 				<!-- Error state with StatusMessage component and retry -->
 				<div v-if="connectionError" class="mt-6 w-full max-w-sm space-y-3">
 					<StatusMessage :message="connectionError" type="error" />
-					<div v-if="isPermissionError" class="text-xs text-[var(--text-muted)] bg-[var(--bg-elevated)] p-3 rounded-lg">
+					<div
+						v-if="isPermissionError"
+						class="text-xs text-[var(--text-muted)] bg-[var(--bg-elevated)] p-3 rounded-lg"
+					>
 						{{ $t('connection.udevTip') }}
 					</div>
 					<BaseButton
 						@click="retryConnection"
 						variant="green"
 						class="w-full"
-						:aria-label="'Retry connection in ' + (connectionMode === 'Wired' ? 'wired' : 'wireless') + ' mode'"
+						:aria-label="
+							'Retry connection in ' + (connectionMode === 'Wired' ? 'wired' : 'wireless') + ' mode'
+						"
 					>
 						{{ $t('connection.retry') }}
 					</BaseButton>
