@@ -31,7 +31,9 @@ Grab the latest `.AppImage` or `.deb` from the [Releases page](https://github.co
 
 **App features** — Dark/Light/Cappuccino themes, i18n (EN/ES), auto-save, full config persistence across restarts, type-safe settings loading.
 
-**Platform** — Linux, macOS, Windows. 136 tests across 13 files.
+**Platform** — Linux, macOS, Windows. 132 tests across 13 files.
+
+**USB Stack** — Fully migrated from `usb` v2 (node-usb, synchronous Transfer API) to `usb` v3 (node-usb-rs, async WebUSB API). Battery monitoring uses interrupt endpoint polling via `nativeTransferIn`. Upstream bug fix submitted (node-usb-rs#4).
 
 ---
 

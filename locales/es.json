@@ -129,7 +129,8 @@
 		"battery": "Batería",
 		"connection": "Conexión",
 		"ledMode": "Modo LED",
-		"wireless": "2.4GHz"
+		"wireless": "2.4GHz",
+		"batteryUnknown": "N/A"
 	},
 	"deviceInfo": {
 		"title": "Información del Dispositivo",

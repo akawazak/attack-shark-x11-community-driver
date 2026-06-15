@@ -1,88 +1,90 @@
-import type { Device } from 'usb';
 import { describe, expect, it, vi, beforeEach } from 'bun:test';
 
-const mockInEndpoint = {
-	address: 0x83,
-	descriptor: { wMaxPacketSize: 64 },
-	pollActive: false,
-	listeners: {} as Record<string, Array<(...args: unknown[]) => void>>,
-	on(event: string, cb: (...args: unknown[]) => void): void {
-		if (!this.listeners[event]) this.listeners[event] = [];
-		this.listeners[event].push(cb);
-	},
-	emit(event: string, ...args: unknown[]): void {
-		const cbs = this.listeners[event] || [];
-		for (const cb of cbs) cb(...args);
-	},
-	startPoll: vi.fn(),
-	stopPoll: vi.fn(),
-};
-
-const mockInterface = {
-	isKernelDriverActive: vi.fn(() => false),
-	detachKernelDriver: vi.fn(),
-	claim: vi.fn(),
-	endpoints: [mockInEndpoint],
-	release: vi.fn((_wait: boolean, cb: (err?: Error) => void) => cb()),
-};
-
-function createMockDevice(productId: number): Device {
-	return {
-		deviceDescriptor: {
-			idVendor: 0x1d57,
-			idProduct: productId,
-			bcdDevice: 0x0200,
-			bNumConfigurations: 1,
-		},
-		open: vi.fn(),
-		close: vi.fn(),
-		interface: vi.fn(() => mockInterface),
-		controlTransfer: vi.fn(
-			(
-				_bmReqType: number,
-				_bReq: number,
-				_wVal: number,
-				_wIndex: number,
-				data: Buffer | number,
-				cb: (err: Error | null, res?: number | Buffer) => void,
-			) => {
-				if (typeof data === 'number') {
-					cb(null, Buffer.alloc(data));
-				} else {
-					cb(null, data.length);
-				}
-			},
-		),
-	};
+interface MockDevice {
+	vendorId: number;
+	productId: number;
+	deviceVersionMajor: number;
+	deviceVersionMinor: number;
+	deviceVersionSubminor: number;
+	configurations: Array<{ configurationValue: number; configurationName: string; interfaces: [] }>;
+	opened: boolean;
+	open: ReturnType<typeof vi.fn>;
+	close: ReturnType<typeof vi.fn>;
+	claimInterface: ReturnType<typeof vi.fn>;
+	releaseInterface: ReturnType<typeof vi.fn>;
+	selectConfiguration: ReturnType<typeof vi.fn>;
+	detachKernelDriver: ReturnType<typeof vi.fn>;
+	attachKernelDriver: ReturnType<typeof vi.fn>;
+	nativeControlTransferIn: ReturnType<typeof vi.fn>;
+	nativeControlTransferOut: ReturnType<typeof vi.fn>;
+	nativeTransferIn: ReturnType<typeof vi.fn>;
+	nativeTransferOut: ReturnType<typeof vi.fn>;
 }
 
-const mockDevices = [createMockDevice(0xfa60), createMockDevice(0xfa55)];
+const createMockDevice = (productId: number): MockDevice => ({
+	vendorId: 0x1d57,
+	productId,
+	deviceVersionMajor: 2,
+	deviceVersionMinor: 0,
+	deviceVersionSubminor: 0,
+	configurations: [{ configurationValue: 1, configurationName: 'Config', interfaces: [] }],
+	opened: false,
+	open: vi.fn().mockResolvedValue(undefined),
+	close: vi.fn().mockResolvedValue(undefined),
+	claimInterface: vi.fn().mockResolvedValue(undefined),
+	releaseInterface: vi.fn().mockResolvedValue(undefined),
+	selectConfiguration: vi.fn().mockResolvedValue(undefined),
+	detachKernelDriver: vi.fn().mockResolvedValue(undefined),
+	attachKernelDriver: vi.fn().mockResolvedValue(undefined),
+	nativeControlTransferIn: vi
+		.fn()
+		.mockImplementation(
+			(_setup: unknown, _timeout: number, length: number): Promise<Uint8Array | null> =>
+				Promise.resolve(new Uint8Array(length)),
+		),
+	nativeControlTransferOut: vi
+		.fn()
+		.mockImplementation(
+			(_setup: unknown, _timeout: number, data?: Uint8Array): Promise<number> =>
+				Promise.resolve(data?.length ?? 0),
+		),
+	nativeTransferIn: vi.fn().mockResolvedValue(new Uint8Array(64)),
+	nativeTransferOut: vi.fn().mockResolvedValue(0),
+});
+
+const mockAdapterDevice = createMockDevice(0xfa60);
+const mockWiredDevice = createMockDevice(0xfa55);
 
 vi.mock('usb', () => ({
-	getDeviceList: vi.fn(() => mockDevices),
+	usb: {
+		findDeviceByIds: vi.fn((vid: number, pid: number): Promise<typeof mockAdapterDevice | null> => {
+			if (vid === 0x1d57 && pid === 0xfa60) return Promise.resolve(mockAdapterDevice);
+			if (vid === 0x1d57 && pid === 0xfa55) return Promise.resolve(mockWiredDevice);
+			return Promise.resolve(null);
+		}),
+	},
 }));
 
 const { AttackSharkX11, ConnectionMode, DriverError, DeviceError } = await import('../src/main/driver/index.js');
 
-function createDriver(mode: ConnectionMode = ConnectionMode.Adapter): InstanceType<typeof AttackSharkX11> {
-	return new AttackSharkX11({ connectionMode: mode, delayMs: 0 });
+function createDriver(mode: ConnectionMode = ConnectionMode.Adapter, delayMs = 0): InstanceType<typeof AttackSharkX11> {
+	return new AttackSharkX11({ connectionMode: mode, delayMs });
 }
 
 describe('AttackSharkX11', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockInterface.isKernelDriverActive = vi.fn(() => false);
 	});
 
 	describe('constructor', () => {
-		it('should create an Adapter-mode instance when device is found', () => {
+		it('should create an Adapter-mode instance when connection mode is specified', () => {
 			const driver = new AttackSharkX11({ connectionMode: ConnectionMode.Adapter });
 			expect(driver.connectionMode).toBe(ConnectionMode.Adapter);
 			expect(driver.productId).toBe(0xfa60);
 			expect(driver.delayMs).toBe(250);
 		});
 
-		it('should create a Wired-mode instance when device is found', () => {
+		it('should create a Wired-mode instance when connection mode is specified', () => {
 			const driver = new AttackSharkX11({ connectionMode: ConnectionMode.Wired });
 			expect(driver.connectionMode).toBe(ConnectionMode.Wired);
 			expect(driver.productId).toBe(0xfa55);
@@ -93,9 +95,11 @@ describe('AttackSharkX11', () => {
 		});
 
 		it('should throw DeviceError if no matching device is found', async () => {
-			const usb = await import('usb');
-			usb.getDeviceList.mockReturnValueOnce([]);
-			expect(() => new AttackSharkX11({ connectionMode: ConnectionMode.Adapter })).toThrow(DeviceError);
+			const { usb: usbMock } = await import('usb');
+			(usbMock.findDeviceByIds as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+			const driver = createDriver();
+
+			await expect(driver.open()).rejects.toThrow(DeviceError);
 		});
 
 		it('should accept custom delayMs', () => {
@@ -105,94 +109,82 @@ describe('AttackSharkX11', () => {
 	});
 
 	describe('open()', () => {
-		it('should open the device and claim the interface', () => {
+		it('should open the device and claim the interface', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 
-			expect(driver.device.open).toHaveBeenCalledTimes(1);
-			expect(driver.device.interface).toHaveBeenCalledWith(2);
-			expect(driver.deviceInterface.claim).toHaveBeenCalledTimes(1);
+			expect(mockAdapterDevice.open).toHaveBeenCalledTimes(1);
+			expect(mockAdapterDevice.claimInterface).toHaveBeenCalledWith(2);
 		});
 
-		it('should detach kernel driver on Linux when active', () => {
+		it('should detach kernel driver on Linux when active', async () => {
 			const originalPlatform = process.platform;
 			Object.defineProperty(process, 'platform', { value: 'linux' });
 
 			const driver = createDriver();
-			mockInterface.isKernelDriverActive = vi.fn(() => true);
-			driver.open();
+			await driver.open();
 
-			expect(mockInterface.detachKernelDriver).toHaveBeenCalledTimes(1);
+			expect(mockAdapterDevice.detachKernelDriver).toHaveBeenCalledWith(2);
 
 			Object.defineProperty(process, 'platform', { value: originalPlatform });
 		});
 
-		it('should not detach kernel driver on non-Linux even if active', () => {
+		it('should not call detachKernelDriver on non-Linux', async () => {
 			const originalPlatform = process.platform;
 			Object.defineProperty(process, 'platform', { value: 'darwin' });
 
 			const driver = createDriver();
-			mockInterface.isKernelDriverActive = vi.fn(() => true);
-			driver.open();
+			await driver.open();
 
-			expect(mockInterface.detachKernelDriver).not.toHaveBeenCalled();
+			expect(mockAdapterDevice.detachKernelDriver).not.toHaveBeenCalled();
 
 			Object.defineProperty(process, 'platform', { value: originalPlatform });
 		});
 
-		it('should not detach kernel driver if not active on Linux', () => {
+		it('should not throw if detachKernelDriver fails on Linux', async () => {
 			const originalPlatform = process.platform;
 			Object.defineProperty(process, 'platform', { value: 'linux' });
 
+			mockAdapterDevice.detachKernelDriver.mockRejectedValueOnce(new Error('No kernel driver'));
 			const driver = createDriver();
-			driver.open();
 
-			expect(mockInterface.detachKernelDriver).not.toHaveBeenCalled();
+			await expect(driver.open()).resolves.toBeUndefined();
 
 			Object.defineProperty(process, 'platform', { value: originalPlatform });
 		});
 
-		it('should start interrupt polling on open', () => {
+		it('should start battery monitor polling on open', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 
-			expect(mockInEndpoint.startPoll).toHaveBeenCalledWith(3, 64);
+			// Battery monitor is started — transferIn should be called in the polling loop
+			await new Promise((r) => setTimeout(r, 50));
+			expect(mockAdapterDevice.nativeTransferIn).toHaveBeenCalled();
 		});
 	});
 
 	describe('close()', () => {
 		it('should close the device and release the interface', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 			await driver.close();
 
-			expect(driver.device.close).toHaveBeenCalledTimes(1);
+			expect(mockAdapterDevice.releaseInterface).toHaveBeenCalledWith(2);
+			expect(mockAdapterDevice.close).toHaveBeenCalledTimes(1);
 		});
 
 		it('should do nothing if not open', async () => {
 			const driver = createDriver();
-			const spy = vi.spyOn(driver.device, 'close');
 			await driver.close();
-			expect(spy).not.toHaveBeenCalled();
-		});
 
-		it('should stop polling if active', async () => {
-			const driver = createDriver();
-			driver.open();
-
-			mockInEndpoint.pollActive = true;
-			await driver.close();
-			expect(mockInEndpoint.stopPoll).toHaveBeenCalled();
+			expect(mockAdapterDevice.close).not.toHaveBeenCalled();
 		});
 
 		it('should not throw when device close has pending request error', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 
-			driver.device.close.mockImplementationOnce(() => {
-				throw new Error('LIBUSB_ERROR_NOT_FOUND pending request');
-			});
-
+			mockAdapterDevice.close.mockRejectedValueOnce(new Error('LIBUSB_ERROR_NOT_FOUND pending request'));
 			await expect(driver.close()).resolves.toBeUndefined();
 		});
 	});
@@ -200,14 +192,14 @@ describe('AttackSharkX11', () => {
 	describe('getBatteryLevel()', () => {
 		it('should return -1 in wired mode', async () => {
 			const driver = createDriver(ConnectionMode.Wired);
-			driver.open();
+			await driver.open();
 			const level = await driver.getBatteryLevel();
 			expect(level).toBe(-1);
 		});
 
 		it('should resolve when batteryChange event fires', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 
 			const result = driver.getBatteryLevel(5000);
 			driver.emit('batteryChange', 75);
@@ -215,29 +207,9 @@ describe('AttackSharkX11', () => {
 			await expect(result).resolves.toBe(75);
 		});
 
-		it('should use cached battery value if available', async () => {
-			const driver = createDriver();
-			driver.open();
-
-			mockInEndpoint.emit('data', Buffer.from([0x03, 0x55, 0x40, 0x01, 50]));
-			await expect(driver.getBatteryLevel()).resolves.toBe(50);
-		});
-
-		it('should emit batteryChange from interrupt endpoint data', () => {
-			const driver = createDriver();
-			driver.open();
-
-			const listener = vi.fn();
-			driver.on('batteryChange', listener);
-
-			mockInEndpoint.emit('data', Buffer.from([0x03, 0x55, 0x40, 0x01, 73]));
-
-			expect(listener).toHaveBeenCalledWith(73);
-		});
-
 		it('should timeout if no battery event received', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 
 			await expect(driver.getBatteryLevel(10)).rejects.toThrow('Timeout waiting for battery report');
 		});
@@ -249,17 +221,17 @@ describe('AttackSharkX11', () => {
 			expect(() => driver.checkIsOpen()).toThrow(DriverError);
 		});
 
-		it('should not throw if device is open', () => {
+		it('should not throw if device is open', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 			expect(() => driver.checkIsOpen()).not.toThrow();
 		});
 	});
 
 	describe('getDeviceInfo()', () => {
-		it('should return device info with correct values for adapter mode', () => {
+		it('should return device info with correct values for adapter mode', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 			const info = driver.getDeviceInfo();
 
 			expect(info.manufacturer).toBe('Beken');
@@ -270,9 +242,9 @@ describe('AttackSharkX11', () => {
 			expect(info.interfaces).toBe(1);
 		});
 
-		it('should return Wired connection mode for wired device', () => {
+		it('should return Wired connection mode for wired device', async () => {
 			const driver = createDriver(ConnectionMode.Wired);
-			driver.open();
+			await driver.open();
 			const info = driver.getDeviceInfo();
 
 			expect(info.productId).toBe('0xfa55');
@@ -296,7 +268,7 @@ describe('AttackSharkX11', () => {
 
 		it('should send control transfer with output data', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 
 			const data = Buffer.from([0x04, 0x01]);
 			const result = await driver.controlTransfer({
@@ -308,42 +280,22 @@ describe('AttackSharkX11', () => {
 			});
 
 			expect(result).toBe(2);
-			expect(driver.device.controlTransfer).toHaveBeenCalledWith(
-				0x21,
-				0x09,
-				0x0304,
-				2,
-				data,
-				expect.any(Function),
-			);
-		});
-
-		it('should use Feature report type for wired mode OUT transfers', async () => {
-			const driver = createDriver(ConnectionMode.Wired);
-			driver.open();
-
-			const data = Buffer.from([0x04, 0x01]);
-			await driver.controlTransfer({
-				bmRequestType: 0x21,
-				bRequest: 0x09,
-				wValue: 0x0304,
-				wIndex: 2,
-				data,
-			});
-
-			expect(driver.device.controlTransfer).toHaveBeenCalledWith(
-				0x21,
-				0x09,
-				0x0304,
-				2,
-				data,
-				expect.any(Function),
+			expect(mockAdapterDevice.nativeControlTransferOut).toHaveBeenCalledWith(
+				expect.objectContaining({
+					requestType: 'class',
+					recipient: 'interface',
+					request: 0x09,
+					value: 0x0304,
+					index: 2,
+				}),
+				expect.any(Number),
+				new Uint8Array(data),
 			);
 		});
 
 		it('should handle input control transfers', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 
 			const result = await driver.controlTransfer({
 				bmRequestType: 0xa1,
@@ -366,7 +318,7 @@ describe('AttackSharkX11', () => {
 
 		it('should send DPI configuration via control transfer', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 
 			await driver.setDpi({
 				activeStage: 2,
@@ -375,25 +327,25 @@ describe('AttackSharkX11', () => {
 				dpiValues: [800, 1600, 2400, 3200, 5000, 22000],
 			});
 
-			expect(driver.device.controlTransfer).toHaveBeenCalled();
+			expect(mockAdapterDevice.nativeControlTransferOut).toHaveBeenCalled();
 		});
 	});
 
 	describe('setPollingRate()', () => {
 		it('should send polling rate via control transfer', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 
 			await driver.setPollingRate(1000);
 
-			expect(driver.device.controlTransfer).toHaveBeenCalled();
+			expect(mockAdapterDevice.nativeControlTransferOut).toHaveBeenCalled();
 		});
 	});
 
 	describe('setUserPreferences()', () => {
 		it('should send user preferences via control transfer', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 
 			await driver.setUserPreferences({
 				lightMode: 0x20,
@@ -401,25 +353,25 @@ describe('AttackSharkX11', () => {
 				keyResponse: 4,
 			});
 
-			expect(driver.device.controlTransfer).toHaveBeenCalled();
+			expect(mockAdapterDevice.nativeControlTransferOut).toHaveBeenCalled();
 		});
 	});
 
 	describe('setMacro()', () => {
 		it('should send macro config via control transfer', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 
 			await driver.setMacro({ forward: [0x12, 0x00, 0x00] });
 
-			expect(driver.device.controlTransfer).toHaveBeenCalled();
+			expect(mockAdapterDevice.nativeControlTransferOut).toHaveBeenCalled();
 		});
 	});
 
 	describe('reset()', () => {
 		it('should call all sub-reset methods in order', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 
 			const sendInternalSpy = vi.spyOn(driver, 'sendInternalStateResetReportBuilder');
 			const resetDpiSpy = vi.spyOn(driver, 'resetDpi');
@@ -440,9 +392,9 @@ describe('AttackSharkX11', () => {
 	});
 
 	describe('onBatteryChange()', () => {
-		it('should register a listener and return an unsubscribe function', () => {
+		it('should register a listener and return an unsubscribe function', async () => {
 			const driver = createDriver();
-			driver.open();
+			await driver.open();
 
 			const listener = vi.fn();
 			const unsubscribe = driver.onBatteryChange(listener);

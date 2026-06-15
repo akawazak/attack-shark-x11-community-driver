@@ -16,7 +16,7 @@ export interface DeviceDriver {
 	readonly delayMs: number;
 
 	/** Opens the USB device, claims the interface, and starts battery monitoring */
-	open(): void;
+	open(): Promise<void>;
 	/** Closes the USB device and releases all resources */
 	close(): Promise<void>;
 

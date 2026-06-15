@@ -1,5 +1,4 @@
 import { EventEmitter } from 'node:events';
-import type { InEndpoint } from 'usb';
 import { ConnectionMode, type Logger } from '../types.js';
 import { TimeoutError } from '../errors.js';
 import { bufferStartsWith } from '../utils/bufferUtils.js';
@@ -9,23 +8,8 @@ export interface BatteryMonitorEvents {
 	error: [error: Error];
 }
 
-/**
- * Pluggable battery config for multi-model support.
- *
- * All fields default to Attack Shark X11 values when omitted,
- * ensuring zero behavioral change for existing consumers.
- */
 export interface BatteryMonitorConfig {
-	/**
-	 * Optional header prefix used to filter interrupt data.
-	 * When `null` or `undefined`, all incoming data is processed.
-	 * @default Buffer.from([0x03, 0x55, 0x40, 0x01]) — X11 prefix
-	 */
 	headerPrefix?: Buffer | null;
-	/**
-	 * Extracts a battery percentage (0–100) from a received interrupt data buffer.
-	 * @default (data) => data[4] — X11 raw byte
-	 */
 	extractValue?: (data: Buffer) => number;
 }
 
@@ -36,22 +20,30 @@ const X11_BATTERY_CONFIG: Required<Pick<BatteryMonitorConfig, 'headerPrefix' | '
 
 export class BatteryMonitor extends EventEmitter<BatteryMonitorEvents> {
 	private lastBattery: number = -1;
-	private interruptEndpoint: InEndpoint;
+	private device: { nativeTransferIn(endpoint: number, timeout: number, length: number): Promise<Uint8Array | null> };
+	private interruptEndpoint: number;
 	private connectionMode: () => ConnectionMode;
 	private logger: Logger;
 	private isOpen: () => boolean;
 	private listenersSetup = false;
+	private polling = false;
+	get isPolling(): boolean {
+		return this.polling;
+	}
+	private pollTimeout: ReturnType<typeof setTimeout> | null = null;
 	private readonly headerPrefix: Buffer | null;
 	private readonly extractValue: (data: Buffer) => number;
 
 	constructor(
-		interruptEndpoint: InEndpoint,
+		device: { nativeTransferIn(endpoint: number, timeout: number, length: number): Promise<Uint8Array | null> },
+		interruptEndpoint: number,
 		connectionMode: () => ConnectionMode,
 		logger: Logger,
 		isOpen: () => boolean,
 		config?: BatteryMonitorConfig,
 	) {
 		super();
+		this.device = device;
 		this.interruptEndpoint = interruptEndpoint;
 		this.connectionMode = connectionMode;
 		this.logger = logger;
@@ -102,7 +94,7 @@ export class BatteryMonitor extends EventEmitter<BatteryMonitorEvents> {
 		if (this.listenersSetup) return;
 		this.listenersSetup = true;
 
-		this.interruptEndpoint.on('data', (data: Buffer) => {
+		this.on('_internalBatteryData', (data: Buffer) => {
 			const matched =
 				this.headerPrefix === null || this.headerPrefix === undefined
 					? true
@@ -117,28 +109,46 @@ export class BatteryMonitor extends EventEmitter<BatteryMonitorEvents> {
 				this.emit('batteryChange', battery);
 			}
 		});
-
-		this.interruptEndpoint.on('error', (err: Error) => {
-			this.emit('error', err);
-		});
 	}
 
 	startPolling(): void {
-		if (!this.isOpen() || !this.interruptEndpoint) return;
-		try {
-			const transferSize = this.interruptEndpoint.descriptor.wMaxPacketSize;
-			this.interruptEndpoint.startPoll(3, transferSize);
-		} catch (e) {
-			this.logger.error('Failed to start polling', e);
+		if (!this.isOpen() || this.polling) return;
+		this.polling = true;
+		this.pollLoop();
+	}
+
+	private async pollLoop(): Promise<void> {
+		while (this.polling) {
+			try {
+				const data = await this.device.nativeTransferIn(this.interruptEndpoint, 2000, 64);
+				if (data) {
+					const buffer = Buffer.from(data);
+					this.emit('_internalBatteryData', buffer);
+				}
+			} catch (e) {
+				if (this.polling) {
+					const errMsg = e instanceof Error ? e.message : String(e);
+					// "Cancelled" is normal — means no data arrived within the timeout window.
+					// Log other errors as they may indicate device issues.
+					if (!errMsg.includes('Cancelled')) {
+						this.logger.warn('Battery monitor interrupt read error', e);
+					}
+				}
+			}
+
+			if (this.polling) {
+				await new Promise<void>((resolve) => {
+					this.pollTimeout = setTimeout(resolve, 100);
+				});
+			}
 		}
 	}
 
 	stopPolling(): void {
-		if (!this.interruptEndpoint) return;
-		try {
-			this.interruptEndpoint.stopPoll();
-		} catch (e) {
-			this.logger.warn('Error stopping poll (likely already stopped):', e);
+		this.polling = false;
+		if (this.pollTimeout) {
+			clearTimeout(this.pollTimeout);
+			this.pollTimeout = null;
 		}
 	}
 

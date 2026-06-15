@@ -1,7 +1,6 @@
-import type { Device, InEndpoint, Interface } from 'usb';
-import * as usb from 'usb';
+import { usb } from 'usb';
 import { EventEmitter } from 'node:events';
-import { DeviceError, DriverError, InterfaceError, ControlTransferError, TimeoutError } from '../errors.js';
+import { DeviceError, DriverError, InterfaceError, TimeoutError } from '../errors.js';
 import type { CustomMacroBuilderOptions, CustomMacroBuilder } from '../protocols/CustomMacroBuilder.js';
 import type { DpiBuilderOptions, DpiBuilder } from '../protocols/DpiBuilder.js';
 import type { MacroBuilderOptions, MacrosBuilder } from '../protocols/MacrosBuilder.js';
@@ -20,9 +19,74 @@ import { BatteryMonitor } from './BatteryMonitor.js';
 import { SettingsWriter } from './SettingsWriter.js';
 import type { DeviceDriver } from './DeviceDriver.js';
 
+// Minimal local types for the subset of WebUSB/usb v3 API we consume.
+// The usb v3 package's own d.ts depends on global WebUSB types that don't
+// exist in a Node.js environment, so we define what we need here.
+type USBRequestType = 'standard' | 'class' | 'vendor';
+type USBRecipient = 'device' | 'interface' | 'endpoint' | 'other';
+
+interface USBControlTransferParameters {
+	requestType: USBRequestType;
+	recipient: USBRecipient;
+	request: number;
+	value: number;
+	index: number;
+}
+
+interface UsbDeviceLike {
+	vendorId: number;
+	productId: number;
+	deviceVersionMajor: number;
+	deviceVersionMinor: number;
+	deviceVersionSubminor: number;
+	configurations: Array<{ configurationValue: number }>;
+	opened: boolean;
+	open(): Promise<void>;
+	close(): Promise<void>;
+	claimInterface(interfaceNumber: number): Promise<void>;
+	releaseInterface(interfaceNumber: number): Promise<void>;
+	selectConfiguration(configurationValue: number): Promise<void>;
+	detachKernelDriver(interfaceNumber: number): Promise<void>;
+	attachKernelDriver(interfaceNumber: number): Promise<void>;
+	controlTransferIn?(setup: USBControlTransferParameters, length: number): Promise<unknown>;
+	controlTransferOut?(setup: USBControlTransferParameters, data?: BufferSource): Promise<unknown>;
+	nativeControlTransferIn(
+		setup: USBControlTransferParameters,
+		timeout: number,
+		length: number,
+	): Promise<Uint8Array | null>;
+	nativeControlTransferOut(
+		setup: USBControlTransferParameters,
+		timeout: number,
+		data?: Uint8Array | null,
+	): Promise<number>;
+	nativeTransferIn(endpointNumber: number, timeout: number, length: number): Promise<Uint8Array | null>;
+	nativeTransferOut(endpointNumber: number, timeout: number, data: Uint8Array): Promise<number>;
+}
+
 const VID = 0x1d57;
 const DEVICE_INTERFACE = 0x02;
-const INTERRUPT_ENDPOINT = 0x83;
+const INTERRUPT_ENDPOINT = 3;
+const CONTROL_TRANSFER_TIMEOUT = 1000;
+
+const REQUEST_TYPES = ['standard', 'class', 'vendor'] as const;
+const RECIPIENTS = ['device', 'interface', 'endpoint', 'other'] as const;
+
+function parseBmRequestType(bmRequestType: number): {
+	requestType: USBRequestType;
+	recipient: USBRecipient;
+	isIn: boolean;
+} {
+	const direction = (bmRequestType >> 7) & 1;
+	const type = (bmRequestType >> 5) & 0x3;
+	const recipient = bmRequestType & 0x1f;
+
+	return {
+		requestType: REQUEST_TYPES[type] ?? 'vendor',
+		recipient: (RECIPIENTS[recipient] as USBRecipient) ?? 'interface',
+		isIn: direction === 1,
+	};
+}
 
 export interface AttackSharkX11Events {
 	batteryChange: [battery: number];
@@ -31,11 +95,9 @@ export interface AttackSharkX11Events {
 
 export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implements DeviceDriver {
 	public readonly productId: number;
-	device: Device;
-	deviceInterface!: Interface;
-	interruptEndpoint!: InEndpoint;
+	device!: UsbDeviceLike;
 	public readonly delayMs: number;
-	private isOpen: boolean = false;
+	private isDeviceOpen: boolean = false;
 	private lastBattery: number = -1;
 	private logger: Logger;
 	private batteryMonitor: BatteryMonitor | null = null;
@@ -49,25 +111,13 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 
 		this.logger = options.logger ?? new ConsoleLogger();
 		this.delayMs = options.delayMs ?? 250;
-
-		const device = usb
-			.getDeviceList()
-			.find(
-				(d) => d.deviceDescriptor.idVendor === VID && d.deviceDescriptor.idProduct === options.connectionMode,
-			);
-
-		if (!device) {
-			throw new DeviceError(`Device with idProduct ${options.connectionMode} not found`);
-		}
-
-		this.device = device;
-		this.productId = device.deviceDescriptor.idProduct;
+		this.productId = options.connectionMode;
 
 		this.settingsWriter = new SettingsWriter({
 			controlTransfer: (opts): Promise<number | Buffer> => this.controlTransfer(opts),
 			checkIsOpen: (): void => this.checkIsOpen(),
 			getConnectionMode: (): ConnectionMode => this.connectionMode,
-			getDevice: (): Device => this.device,
+			getDevice: (): UsbDeviceLike => this.device,
 		});
 	}
 
@@ -75,11 +125,21 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 		return this.productId as ConnectionMode;
 	}
 
-	open(): void {
+	async open(): Promise<void> {
+		this.logger.info(`Searching for USB device VID:${VID.toString(16)} PID:${this.productId.toString(16)}...`);
+
+		const device = await usb.findDeviceByIds(VID, this.productId);
+
+		if (!device) {
+			throw new DeviceError(`Device with idProduct ${this.productId} not found`);
+		}
+
+		this.device = device;
+
 		this.logger.info(`Opening USB device VID:${VID.toString(16)} PID:${this.productId.toString(16)}...`);
 
 		try {
-			this.device.open();
+			await device.open();
 		} catch (e: unknown) {
 			const error = e instanceof Error ? e : new Error(String(e));
 			this.logger.error('Failed to open USB device', error);
@@ -91,29 +151,31 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 			);
 		}
 
-		let iface: Interface;
-		try {
-			iface = this.device.interface(DEVICE_INTERFACE);
-		} catch (e: unknown) {
-			const error = e instanceof Error ? e : new Error(String(e));
-			this.logger.error(`Failed to get interface ${DEVICE_INTERFACE}`, error);
-			throw new InterfaceError(`interface ${DEVICE_INTERFACE} not found`, DEVICE_INTERFACE, { cause: error });
-		}
-
-		if (!iface) {
-			throw new InterfaceError(`interface ${DEVICE_INTERFACE} not found`, DEVICE_INTERFACE);
-		}
-
-		this.deviceInterface = iface;
-
-		try {
-			if (process.platform === 'linux' && iface.isKernelDriverActive()) {
+		if (process.platform === 'linux') {
+			try {
+				await device.detachKernelDriver(DEVICE_INTERFACE);
 				this.logger.info('Detaching kernel driver...');
-				iface.detachKernelDriver();
+			} catch {
+				// Kernel driver may not be active — that's fine
 			}
+		}
 
+		// Select the first configuration (required by WebUSB)
+		if (device.configurations && device.configurations.length > 0) {
+			const firstConfig = device.configurations[0];
+			if (firstConfig) {
+				try {
+					await device.selectConfiguration(firstConfig.configurationValue);
+				} catch (e: unknown) {
+					const error = e instanceof Error ? e : new Error(String(e));
+					this.logger.warn(`selectConfiguration failed (may already be configured): ${error.message}`);
+				}
+			}
+		}
+
+		try {
 			this.logger.info(`Claiming interface ${DEVICE_INTERFACE}...`);
-			iface.claim();
+			await device.claimInterface(DEVICE_INTERFACE);
 		} catch (e: unknown) {
 			const error = e instanceof Error ? e : new Error(String(e));
 			if (error.message.includes('LIBUSB_ERROR_BUSY')) {
@@ -128,21 +190,14 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 			}
 		}
 
-		const interruptEndpoint = iface.endpoints.find((e) => e.address === INTERRUPT_ENDPOINT);
-
-		if (!interruptEndpoint) {
-			throw new InterfaceError(`interruptEndpoint ${INTERRUPT_ENDPOINT} not found`, INTERRUPT_ENDPOINT);
-		}
-
-		this.interruptEndpoint = interruptEndpoint as InEndpoint;
-
-		this.isOpen = true;
+		this.isDeviceOpen = true;
 
 		this.batteryMonitor = new BatteryMonitor(
-			this.interruptEndpoint,
+			this.device,
+			INTERRUPT_ENDPOINT,
 			() => this.connectionMode,
 			this.logger,
-			() => this.isOpen,
+			() => this.isDeviceOpen,
 		);
 
 		this.batteryMonitor.on('batteryChange', (level) => {
@@ -160,7 +215,7 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 	}
 
 	async close(): Promise<void> {
-		if (!this.isOpen) return;
+		if (!this.isDeviceOpen) return;
 
 		this.logger.info('Closing driver and releasing resources...');
 		this.removeAllListeners();
@@ -169,27 +224,16 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 			this.batteryMonitor.destroy();
 		}
 
-		if (this.deviceInterface) {
-			try {
-				this.logger.info(`Releasing interface ${DEVICE_INTERFACE}...`);
-				await new Promise<void>((resolve, reject) => {
-					this.deviceInterface.release(true, (err) => {
-						if (err) {
-							this.logger.error('Error releasing interface', err);
-							reject(err);
-							return;
-						}
-						resolve();
-					});
-				});
-			} catch (e) {
-				this.logger.error('Failed to release interface', e);
-			}
+		try {
+			this.logger.info(`Releasing interface ${DEVICE_INTERFACE}...`);
+			await this.device.releaseInterface(DEVICE_INTERFACE);
+		} catch (e) {
+			this.logger.error('Failed to release interface', e);
 		}
 
 		try {
 			this.logger.info('Closing USB device...');
-			this.device.close();
+			await this.device.close();
 		} catch (e: unknown) {
 			const error = e instanceof Error ? e : new Error(String(e));
 			if (error.message.includes('pending request')) {
@@ -199,12 +243,12 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 			}
 		}
 
-		this.isOpen = false;
+		this.isDeviceOpen = false;
 		this.logger.info('Driver closed.');
 	}
 
 	checkIsOpen(): void {
-		if (!this.isOpen) throw new DriverError('You have to open the device first');
+		if (!this.isDeviceOpen) throw new DriverError('You have to open the device first');
 	}
 
 	controlTransfer(options: ControlTransferIn): Promise<Buffer>;
@@ -213,30 +257,26 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 	async controlTransfer(options: ControlTransferOptions): Promise<number | Buffer> {
 		this.checkIsOpen();
 
-		const wValue = options.wValue;
+		const { requestType, recipient, isIn } = parseBmRequestType(options.bmRequestType);
+		const setup: USBControlTransferParameters = {
+			requestType,
+			recipient,
+			request: options.bRequest,
+			value: options.wValue,
+			index: options.wIndex,
+		};
 
-		const result = await new Promise<number | Buffer>((resolve, reject) => {
-			this.device.controlTransfer(
-				options.bmRequestType,
-				options.bRequest,
-				wValue,
-				options.wIndex,
-				options.data,
-				(err, res) => {
-					if (err) {
-						reject(new ControlTransferError('Control transfer failed', { cause: err }));
-						return;
-					}
+		let result: number | Buffer;
 
-					if (res === undefined) {
-						reject(new ControlTransferError('Control transfer returned undefined'));
-						return;
-					}
-
-					resolve(res);
-				},
-			);
-		});
+		if (isIn) {
+			const length = typeof options.data === 'number' ? options.data : 0;
+			const data = await this.device.nativeControlTransferIn(setup, CONTROL_TRANSFER_TIMEOUT, length);
+			result = data ? Buffer.from(data) : Buffer.alloc(0);
+		} else {
+			const data = options.data instanceof Buffer ? new Uint8Array(options.data) : undefined;
+			const bytesWritten = await this.device.nativeControlTransferOut(setup, CONTROL_TRANSFER_TIMEOUT, data);
+			result = bytesWritten;
+		}
 
 		if (Buffer.isBuffer(options.data)) {
 			await delay(this.delayMs);
@@ -248,12 +288,15 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 	getBatteryLevel(timeoutMs = 1000): Promise<number> {
 		this.checkIsOpen();
 
-		return new Promise((resolve, reject) => {
-			if (this.connectionMode === ConnectionMode.Wired) {
-				resolve(-1);
-				return;
-			}
+		if (this.connectionMode === ConnectionMode.Wired) {
+			return Promise.resolve(-1);
+		}
 
+		if (this.batteryMonitor && !this.batteryMonitor.isPolling) {
+			return Promise.resolve(-1);
+		}
+
+		return new Promise((resolve, reject) => {
 			let finished = false;
 
 			const cleanup = (): void => {

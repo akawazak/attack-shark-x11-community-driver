@@ -401,7 +401,7 @@ watch(
 							>
 								<h3 class="text-sm text-[var(--text-secondary)] mb-1">{{ $t('overview.battery') }}</h3>
 								<p class="text-2xl font-bold text-[var(--text-primary)]">
-									{{ batteryLevel >= 0 ? `${batteryLevel}%` : $t('connection.wiredDisplay') }}
+									{{ batteryLevel >= 0 ? `${batteryLevel}%` : $t('overview.batteryUnknown') }}
 								</p>
 							</div>
 							<div

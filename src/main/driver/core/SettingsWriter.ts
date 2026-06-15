@@ -1,4 +1,10 @@
-import type { Device } from 'usb';
+interface UsbDeviceInfo {
+	vendorId: number;
+	productId: number;
+	deviceVersionMajor: number;
+	deviceVersionMinor: number;
+	configurations: Array<unknown>;
+}
 import { CustomMacroBuilder, type CustomMacroBuilderOptions } from '../protocols/CustomMacroBuilder.js';
 import { MacroMode } from '../../../shared/macro-types.js';
 import { DpiBuilder, type DpiBuilderOptions } from '../protocols/DpiBuilder.js';
@@ -12,7 +18,7 @@ export interface SettingsWriterDeps {
 	controlTransfer(options: ControlTransferOptions): Promise<number | Buffer>;
 	checkIsOpen(): void;
 	getConnectionMode(): ConnectionMode;
-	getDevice(): Device;
+	getDevice(): UsbDeviceInfo;
 }
 
 export class SettingsWriter {
@@ -255,18 +261,18 @@ export class SettingsWriter {
 		connectionMode: string;
 		interfaces: number;
 	} {
-		const descriptor = this.deps.getDevice().deviceDescriptor;
+		const device = this.deps.getDevice();
 
 		return {
 			manufacturer: 'Beken',
 			product: 'Attack Shark X11',
 			serialNumber: 'N/A',
-			vendorId: `0x${descriptor.idVendor.toString(16).padStart(4, '0')}`,
-			productId: `0x${descriptor.idProduct.toString(16).padStart(4, '0')}`,
-			bcdDevice: `${(descriptor.bcdDevice >> 8) & 0xff}.${descriptor.bcdDevice & 0xff}`,
+			vendorId: `0x${device.vendorId.toString(16).padStart(4, '0')}`,
+			productId: `0x${device.productId.toString(16).padStart(4, '0')}`,
+			bcdDevice: `${device.deviceVersionMajor}.${device.deviceVersionMinor}`,
 			connectionMode:
 				this.deps.getConnectionMode() === ConnectionMode.Adapter ? 'Wireless (2.4GHz)' : 'Wired (USB)',
-			interfaces: descriptor.bNumConfigurations,
+			interfaces: device.configurations?.length ?? 0,
 		};
 	}
 }
