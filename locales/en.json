@@ -150,5 +150,14 @@
 		"serialNumber": "Serial Number",
 		"refreshHint": "Click \"Refresh\" to load device information",
 		"connectHint": "Connect a device to view information"
+	},
+	"reset": {
+		"button": "Reset Device",
+		"confirm": "Are you sure you want to reset to factory defaults? This cannot be undone.",
+		"resetting": "Resetting...",
+		"success": "Reset successful! Please reconnect the device.",
+		"failed": "Reset failed",
+		"dangerZone": "Danger Zone",
+		"dangerZoneDesc": "Reset all settings to factory defaults. This cannot be undone."
 	}
 }

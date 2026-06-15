@@ -104,18 +104,6 @@ const fetchSummary = async () => {
 	}
 };
 
-const reset = async () => {
-	if (!confirm('Are you sure you want to reset to factory defaults? This cannot be undone.')) return;
-	try {
-		await window.api.resetDevice();
-		alert('Reset successful! Please reconnect the device.');
-		isConnected.value = false;
-	} catch (err: unknown) {
-		const error = err instanceof Error ? err : new Error(String(err));
-		alert(`Reset failed: ${error.message}`);
-	}
-};
-
 const updateBattery = async () => {
 	try {
 		const level = await window.api.getBattery();
@@ -431,7 +419,11 @@ watch(
 
 					<!-- Preferences Content -->
 					<div v-if="activeTab === 'preferences' && !(connectionMode === 'Wired' && isConnected)">
-						<UserPreferences v-model="preferences" :isConnected="isConnected" />
+						<UserPreferences
+							v-model="preferences"
+							:isConnected="isConnected"
+							@reset-complete="isConnected = false"
+						/>
 					</div>
 
 					<!-- DPI Content -->

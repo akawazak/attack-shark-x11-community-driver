@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, reactive } from 'vue';
-import { Palette, Cpu, Database, Settings } from 'lucide-vue-next';
+import { Palette, Cpu, Database, Settings, AlertTriangle, RotateCcw } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
 import BaseButton from './BaseButton.vue';
 import BaseInput from './BaseInput.vue';
@@ -38,7 +38,7 @@ const props = defineProps<{
 	modelValue: UserPreferences;
 }>();
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue', 'resetComplete']);
 
 const form = reactive<UserPreferences>({ ...DEFAULT_PREFS, ...props.modelValue });
 
@@ -128,6 +128,24 @@ const deleteProfile = async (name: string) => {
 };
 
 loadProfilesList();
+
+const isResetting = ref(false);
+
+const resetDevice = async () => {
+	if (!confirm(t('reset.confirm'))) return;
+	isResetting.value = true;
+	statusMessage.value = '';
+	try {
+		await window.api.resetDevice();
+		alert(t('reset.success'));
+		emit('resetComplete');
+	} catch (err: unknown) {
+		const error = err instanceof Error ? err : new Error(String(err));
+		statusMessage.value = `${t('reset.failed')}: ${error.message}`;
+	} finally {
+		isResetting.value = false;
+	}
+};
 
 async function applyPreferences(showUi = true) {
 	if (!props.isConnected) return;
@@ -332,5 +350,25 @@ async function applyPreferences(showUi = true) {
 				</div>
 			</Card>
 		</div>
+
+		<!-- Danger Zone -->
+		<Card class="border-red-500/40 bg-red-500/[0.03] hover:border-red-500/60 shadow-red-500/5">
+			<template #title>
+				<AlertTriangle class="w-6 h-6 text-red-400" />
+				{{ $t('reset.dangerZone') }}
+			</template>
+			<div class="space-y-4">
+				<div class="flex items-start gap-3 p-3 rounded-lg bg-red-500/[0.06] border border-red-500/15">
+					<AlertTriangle class="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+					<p class="text-sm text-[var(--text-secondary)] leading-relaxed">
+						{{ $t('reset.dangerZoneDesc') }}
+					</p>
+				</div>
+				<BaseButton @click="resetDevice" :disabled="!isConnected || isResetting" variant="red">
+					<RotateCcw class="w-4 h-4" />
+					{{ isResetting ? $t('reset.resetting') : $t('reset.button') }}
+				</BaseButton>
+			</div>
+		</Card>
 	</div>
 </template>

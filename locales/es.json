@@ -150,5 +150,14 @@
 		"serialNumber": "Número de Serie",
 		"refreshHint": "Haz clic en \"Actualizar\" para cargar la información del dispositivo",
 		"connectHint": "Conecta un dispositivo para ver información"
+	},
+	"reset": {
+		"button": "Restablecer Dispositivo",
+		"confirm": "¿Restablecer los valores de fábrica? Esta acción no se puede deshacer.",
+		"resetting": "Restableciendo...",
+		"success": "¡Dispositivo restablecido! Por favor reconecta.",
+		"failed": "Error al restablecer",
+		"dangerZone": "Zona de Peligro",
+		"dangerZoneDesc": "Restablece todas las configuraciones a valores de fábrica. Esta acción no se puede deshacer."
 	}
 }
