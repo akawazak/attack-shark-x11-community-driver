@@ -15,13 +15,15 @@ Fork of [HarukaYamamoto0's driver](https://github.com/HarukaYamamoto0) with a ne
 ## Quick Install
 
 ```bash
-# Arch Linux (AUR)
-yay -S attack-shark-x11-electron
-
-# Other Linux: download from Releases
+curl -fsSL https://raw.githubusercontent.com/dressedinblack5/attack-shark-x11-electron/main/install.sh | bash
 ```
 
-Grab the latest `.AppImage` or `.deb` from the [Releases page](https://github.com/dressedinblack5/attack-shark-x11-electron/releases).
+The script auto-detects your distro:
+- **Arch** → installs from AUR
+- **Ubuntu / Debian** → downloads the latest `.deb`
+- **any other Linux** → downloads the AppImage + sets up a `.desktop` entry
+
+Manual downloads are also available on the [Releases page](https://github.com/dressedinblack5/attack-shark-x11-electron/releases).
 
 ---
 
