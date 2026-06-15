@@ -175,25 +175,6 @@ body {
 	position: relative;
 }
 
-#sidebar::before {
-	content: '';
-	position: absolute;
-	inset: 0;
-	background: url('./shark-x11-small.png') no-repeat bottom 150px center / min(90%, 600px);
-	mix-blend-mode: multiply;
-	opacity: 1;
-	pointer-events: none;
-}
-
-html.light #sidebar::before {
-	mix-blend-mode: multiply;
-	opacity: 0.3;
-}
-
-html.cappuccino #sidebar::before {
-	opacity: 0.15;
-}
-
 /* Tab transition animations */
 .fade-slide-enter-active {
 	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
