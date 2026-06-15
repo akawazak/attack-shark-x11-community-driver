@@ -1,51 +1,105 @@
-/tmp
-/out-tsc
-/reverse-eng
-
-/node_modules
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-/.pnp
+# Dependencies
+node_modules/
+.pnp
 .pnp.js
 
-.vscode/*
-./dist
-.DS_Store
-.idea
-dist
-parse.ts
-tests.ts
-scratch.txt
+# Bun
+bun.lockb
+bun-figs/
+package-lock.json
 
-.eslintcache
+# Build outputs
 dist/
 build/
 out/
+out-tsc/
 .tmp/
+tmp/
+temp/
+
+# Vite / Electron-Vite
+.vite/
 .cache/
+*.tsbuildinfo
+
+# Electron Builder artifacts
+*.app
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.msi
+*.yml
+*.blockmap
+*.nupkg
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
 coverage/
+.nyc_output/
+
+# Linting / formatting
+.eslintcache
+.prettiercache
+
+# Logs
 logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
+# Environment files
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE / Editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
 *.swp
 *.swo
 *.bak
 *.orig
+
+# OS
+.DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-node_modules/
-bun.lockb
-pnpm-debug.log*
-package-lock.json
-.env.*
-!.env.example
+# Misc
+*.pem
+.surge.sh
+.vercel
+.netlify
+.turbo/
 
-!.idea/dictionaries
-
-.gemini/
-gha-creds-*.json
+# Project specific
+/tmp
+/reverse-eng
+parse.ts
+tests.ts
+scratch.txt
+read-test.ts
+reset-macros.ts
+PKGBUILD
+.SRCINFO
 
 # Agent tooling
 .omo/
 .playwright-mcp/
+.gemini/
+gha-creds-*.json
+
+# Husky (uncomment if you don't want to commit hooks)
+# .husky/
