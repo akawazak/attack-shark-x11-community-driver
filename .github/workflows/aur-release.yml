@@ -17,6 +17,11 @@ jobs:
               with:
                   ssh-private-key: ${{ secrets.AUR_SSH_KEY }}
 
+            - name: Add AUR host key
+              run: |
+                  mkdir -p ~/.ssh
+                  ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+
             - name: Clone AUR repository
               run: |
                   git clone ssh://aur@aur.archlinux.org/attack-shark-x11-electron.git /tmp/aur-repo
@@ -27,10 +32,11 @@ jobs:
                   # Copy updated PKGBUILD and .SRCINFO from main repo
                   cp ${{ github.workspace }}/PKGBUILD .
                   cp ${{ github.workspace }}/.SRCINFO .
-                  # Update pkgver in PKGBUILD if not already updated
-                  sed -i "s/pkgver=.*/pkgver=${GITHUB_REF_NAME#v}/" PKGBUILD
-                  # Update .SRCINFO
-                  makepkg --printsrcinfo > .SRCINFO
+                    # Update pkgver in PKGBUILD if not already updated
+                    sed -i "s/pkgver=.*/pkgver=${GITHUB_REF_NAME#v}/" PKGBUILD
+                    # Update .SRCINFO (makepkg not available on runner)
+                    sed -i "s/pkgver = .*/pkgver = ${GITHUB_REF_NAME#v}/" .SRCINFO
+                    sed -i "s|source = .*|source = https://github.com/dressedinblack5/attack-shark-x11-electron/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz|" .SRCINFO
                   git add PKGBUILD .SRCINFO
                   git commit -m "release: ${GITHUB_REF_NAME}"
                   git push origin master
