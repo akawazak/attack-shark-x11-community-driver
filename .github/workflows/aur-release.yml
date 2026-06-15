@@ -38,5 +38,5 @@ jobs:
                     sed -i "s/pkgver = .*/pkgver = ${GITHUB_REF_NAME#v}/" .SRCINFO
                     sed -i "s|source = .*|source = https://github.com/dressedinblack5/attack-shark-x11-electron/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz|" .SRCINFO
                   git add PKGBUILD .SRCINFO
-                  git commit -m "release: ${GITHUB_REF_NAME}"
+                  git -c user.name="GitHub Actions" -c user.email="actions@github.com" commit -m "release: ${GITHUB_REF_NAME}"
                   git push origin master
