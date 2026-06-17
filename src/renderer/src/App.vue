@@ -299,9 +299,9 @@ watch(
 					<Zap class="w-5 h-5 flex-shrink-0" />
 					<span v-if="!sidebarCollapsed">{{ $t('sidebar.dpi') }}</span>
 				</button>
-			<button
-				v-if="capabilities.macros !== false"
-				@click="activeTab = 'macros'"
+				<button
+					v-if="capabilities.macros !== false"
+					@click="activeTab = 'macros'"
 					:class="[
 						'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
 						sidebarCollapsed ? 'justify-center w-10 h-10 p-0' : 'w-full',
@@ -361,42 +361,44 @@ watch(
 					<MousePointer2 class="w-12 h-12 text-[var(--text-muted)]" />
 				</div>
 
-			<h2 class="text-2xl font-bold mb-2 text-[var(--text-primary)]">
-				{{ $t('connection.title') }}
-			</h2>
-			<p class="text-[var(--text-secondary)] mb-8 max-w-sm">
-				{{ $t('connection.description') }}
-			</p>
+				<h2 class="text-2xl font-bold mb-2 text-[var(--text-primary)]">
+					{{ $t('connection.title') }}
+				</h2>
+				<p class="text-[var(--text-secondary)] mb-8 max-w-sm">
+					{{ $t('connection.description') }}
+				</p>
 
-			<!-- Single connection mode selector (model auto-detected after connect) -->
-			<div class="grid grid-cols-2 gap-4 w-full max-w-sm">
-				<button
-					@click="connect(0xfa60)"
-					class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-5 rounded-xl border border-[var(--connection-card-border)] transition-all group flex flex-col items-center"
-					aria-label="Connect via 2.4GHz wireless adapter"
-				>
-					<Zap
-						class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary transition-colors"
-					/>
-					<span class="block font-semibold text-[var(--text-primary)]">{{ $t('connection.adapter') }}</span>
-					<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
-						$t('connection.adapterDesc')
-					}}</span>
-				</button>
-				<button
-					@click="connectWired"
-					class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-5 rounded-xl border border-[var(--connection-card-border)] transition-all group flex flex-col items-center"
-					aria-label="Connect via USB cable"
-				>
-					<ShieldAlert
-						class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary transition-colors"
-					/>
-					<span class="block font-semibold text-[var(--text-primary)]">{{ $t('connection.wired') }}</span>
-					<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
-						$t('connection.wiredDesc')
-					}}</span>
-				</button>
-			</div>
+				<!-- Single connection mode selector (model auto-detected after connect) -->
+				<div class="grid grid-cols-2 gap-4 w-full max-w-sm">
+					<button
+						@click="connect(0xfa60)"
+						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-5 rounded-xl border border-[var(--connection-card-border)] transition-all group flex flex-col items-center"
+						aria-label="Connect via 2.4GHz wireless adapter"
+					>
+						<Zap
+							class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary transition-colors"
+						/>
+						<span class="block font-semibold text-[var(--text-primary)]">{{
+							$t('connection.adapter')
+						}}</span>
+						<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
+							$t('connection.adapterDesc')
+						}}</span>
+					</button>
+					<button
+						@click="connectWired"
+						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-5 rounded-xl border border-[var(--connection-card-border)] transition-all group flex flex-col items-center"
+						aria-label="Connect via USB cable"
+					>
+						<ShieldAlert
+							class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary transition-colors"
+						/>
+						<span class="block font-semibold text-[var(--text-primary)]">{{ $t('connection.wired') }}</span>
+						<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
+							$t('connection.wiredDesc')
+						}}</span>
+					</button>
+				</div>
 
 				<!-- Error state with StatusMessage component and retry -->
 				<div v-if="connectionError" class="mt-6 w-full max-w-sm space-y-3">
@@ -481,12 +483,12 @@ watch(
 
 					<!-- Preferences Content -->
 					<div v-if="activeTab === 'preferences' && !(connectionMode === 'Wired' && isConnected)">
-					<UserPreferences
-						v-model="preferences"
-						:isConnected="isConnected"
-						:deviceModel="deviceModel"
-						@reset-complete="isConnected = false"
-					/>
+						<UserPreferences
+							v-model="preferences"
+							:isConnected="isConnected"
+							:deviceModel="deviceModel"
+							@reset-complete="isConnected = false"
+						/>
 					</div>
 
 					<!-- DPI Content -->
