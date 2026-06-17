@@ -81,8 +81,4 @@ export class InternalStateResetReportBuilder implements BaseProtocolBuilder {
 	toString(): string {
 		return this.buffer.toString('hex');
 	}
-
-	compareWithHexString(value: string): boolean {
-		return this.toString() === value;
-	}
 }

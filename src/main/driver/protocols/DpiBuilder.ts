@@ -213,10 +213,6 @@ export class DpiBuilder implements BaseProtocolBuilder {
 		return this.buffer.toString('hex');
 	}
 
-	public compareWithHexString(value: string): boolean {
-		return this.toString() === value;
-	}
-
 	private encodeDpi(dpi: number): number {
 		const keys = Object.keys(DPI_STEP_MAP)
 			.map(Number)

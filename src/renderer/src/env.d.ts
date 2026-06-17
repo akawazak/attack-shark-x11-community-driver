@@ -1,5 +1,4 @@
 /// <reference types="vite/client" />
-import 'vue-router';
 
 declare module '@vue/runtime-core' {
 	interface ComponentCustomProperties {
@@ -31,8 +30,6 @@ interface AppSettings {
 
 declare global {
 	interface Window {
-		electron: unknown;
-		__preloadLoaded?: boolean;
 		api: {
 			connectDevice: (mode: number) => Promise<{ success: boolean; error?: string }>;
 			getBattery: () => Promise<number>;
@@ -43,6 +40,7 @@ declare global {
 			setUserPreferences: (prefs: unknown) => Promise<number>;
 			setMacro: (config: unknown) => Promise<number>;
 			setCustomMacro: (options: unknown) => Promise<void>;
+			sendCustomMacro: (packets: unknown) => Promise<void>;
 			listProfiles: () => Promise<string[]>;
 			saveProfile: (name: string, data: unknown) => Promise<void>;
 			loadProfile: (name: string) => Promise<unknown>;

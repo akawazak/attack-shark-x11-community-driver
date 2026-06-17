@@ -1,9 +1,9 @@
+import { app } from 'electron';
 import type { StageIndex } from '../driver/protocols/DpiBuilder.js';
 import fs from 'fs/promises';
 import path from 'path';
-import { getUserDataPath } from '../utils/platformUtils';
 
-const getSettingsPath = (): string => path.join(getUserDataPath(), 'settings.json');
+const getSettingsPath = (): string => path.join(app.getPath('userData'), 'settings.json');
 
 export interface AppSettings {
 	lastTab: string;

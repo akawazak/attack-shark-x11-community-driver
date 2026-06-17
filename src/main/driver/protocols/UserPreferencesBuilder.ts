@@ -118,143 +118,14 @@ export type KeyResponse =
 	| 50;
 
 /**
- * Represents a type definition for deep sleep time, constrained to specific integer values.
- *
- * The `DeepSleepTime` type is intended to define a range of valid values
- * representing time in minutes, from 1 to 60 inclusive.
- *
- * This type can be used for scenarios where precise and limited values are
- * required to specify the duration of deep sleep in minutes.
+ * Deep sleep time in minutes (1–60)
  */
-export type DeepSleepTime =
-	| 1
-	| 2
-	| 3
-	| 4
-	| 5
-	| 6
-	| 7
-	| 8
-	| 9
-	| 10
-	| 11
-	| 12
-	| 13
-	| 14
-	| 15
-	| 16
-	| 17
-	| 18
-	| 19
-	| 20
-	| 21
-	| 22
-	| 23
-	| 24
-	| 25
-	| 26
-	| 27
-	| 28
-	| 29
-	| 30
-	| 31
-	| 32
-	| 33
-	| 34
-	| 35
-	| 36
-	| 37
-	| 38
-	| 39
-	| 40
-	| 41
-	| 42
-	| 43
-	| 44
-	| 45
-	| 46
-	| 47
-	| 48
-	| 49
-	| 50
-	| 51
-	| 52
-	| 53
-	| 54
-	| 55
-	| 56
-	| 57
-	| 58
-	| 59
-	| 60;
+export type DeepSleepTime = number;
 
 /**
- * Represents a type that defines allowed sleep durations in increments of 0.5 minutes.
- *
- * Each value corresponds to a specific number of minutes that can be selected
- * for representing sleep time, ranging from 0.5 minutes to 30 minutes.
+ * Sleep time in minutes (0.5–30, step 0.5)
  */
-export type SleepTime =
-	| 0.5
-	| 1
-	| 1.5
-	| 2
-	| 2.5
-	| 3
-	| 3.5
-	| 4
-	| 4.5
-	| 5
-	| 5.5
-	| 6
-	| 6.5
-	| 7
-	| 7.5
-	| 8
-	| 8.5
-	| 9
-	| 9.5
-	| 10
-	| 10.5
-	| 11
-	| 11.5
-	| 12
-	| 12.5
-	| 13
-	| 13.5
-	| 14
-	| 14.5
-	| 15
-	| 15.5
-	| 16
-	| 16.5
-	| 17
-	| 17.5
-	| 18
-	| 18.5
-	| 19
-	| 19.5
-	| 20
-	| 20.5
-	| 21
-	| 21.5
-	| 22
-	| 22.5
-	| 23
-	| 23.5
-	| 24
-	| 24.5
-	| 25
-	| 25.5
-	| 26
-	| 26.5
-	| 27
-	| 27.5
-	| 28
-	| 28.5
-	| 29
-	| 29.5
-	| 30;
+export type SleepTime = number;
 
 /**
  * Builder for user preferences and configurations (Report 0x0305)
@@ -398,10 +269,6 @@ export class UserPreferencesBuilder implements BaseProtocolBuilder {
 
 	toString(): string {
 		return this.buffer.toString('hex');
-	}
-
-	compareWithHexString(value: string): boolean {
-		return this.toString() === value;
 	}
 
 	private updateIndex4(): void {

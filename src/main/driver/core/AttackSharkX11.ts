@@ -1,12 +1,19 @@
 import { usb } from 'usb';
 import { EventEmitter } from 'node:events';
 import { DeviceError, DriverError, InterfaceError, TimeoutError } from '../errors.js';
-import type { CustomMacroBuilderOptions, CustomMacroBuilder } from '../protocols/CustomMacroBuilder.js';
-import type { DpiBuilderOptions, DpiBuilder } from '../protocols/DpiBuilder.js';
-import type { MacroBuilderOptions, MacrosBuilder } from '../protocols/MacrosBuilder.js';
-import type { Rate, PollingRateBuilder } from '../protocols/PollingRateBuilder.js';
-import type { UserPreferencesBuilderOptions, UserPreferencesBuilder } from '../protocols/UserPreferencesBuilder.js';
+import { CustomMacroBuilder, type CustomMacroBuilderOptions } from '../protocols/CustomMacroBuilder.js';
+import { DpiBuilder, type DpiBuilderOptions } from '../protocols/DpiBuilder.js';
+import { InternalStateResetReportBuilder } from '../protocols/InternalStateResetReportBuilder.js';
+import { type MacroBuilderOptions, MacrosBuilder } from '../protocols/MacrosBuilder.js';
 import {
+	PollingRateBuilder,
+	type Rate,
+	type PollingRateBuilder as PollingRateBuilderType,
+} from '../protocols/PollingRateBuilder.js';
+import { UserPreferencesBuilder, type UserPreferencesBuilderOptions } from '../protocols/UserPreferencesBuilder.js';
+import { MacroMode } from '../../../shared/macro-types.js';
+import {
+	Button,
 	ConnectionMode,
 	type ControlTransferIn,
 	type ControlTransferOptions,
@@ -16,12 +23,7 @@ import {
 import { delay } from '../utils/delay.js';
 import { ConsoleLogger } from '../logger/index.js';
 import { BatteryMonitor } from './BatteryMonitor.js';
-import { SettingsWriter } from './SettingsWriter.js';
-import type { DeviceDriver } from './DeviceDriver.js';
 
-// Minimal local types for the subset of WebUSB/usb v3 API we consume.
-// The usb v3 package's own d.ts depends on global WebUSB types that don't
-// exist in a Node.js environment, so we define what we need here.
 type USBRequestType = 'standard' | 'class' | 'vendor';
 type USBRecipient = 'device' | 'interface' | 'endpoint' | 'other';
 
@@ -93,7 +95,7 @@ export interface AttackSharkX11Events {
 	error: [error: Error];
 }
 
-export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implements DeviceDriver {
+export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 	public readonly productId: number;
 	device!: UsbDeviceLike;
 	public readonly delayMs: number;
@@ -101,7 +103,7 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 	private lastBattery: number = -1;
 	private logger: Logger;
 	private batteryMonitor: BatteryMonitor | null = null;
-	private settingsWriter: SettingsWriter;
+	private cachedUserPreferences: UserPreferencesBuilderOptions | null = null;
 
 	constructor(options: { connectionMode: ConnectionMode; logger?: Logger; delayMs?: number }) {
 		super();
@@ -112,13 +114,6 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 		this.logger = options.logger ?? new ConsoleLogger();
 		this.delayMs = options.delayMs ?? 250;
 		this.productId = options.connectionMode;
-
-		this.settingsWriter = new SettingsWriter({
-			controlTransfer: (opts): Promise<number | Buffer> => this.controlTransfer(opts),
-			checkIsOpen: (): void => this.checkIsOpen(),
-			getConnectionMode: (): ConnectionMode => this.connectionMode,
-			getDevice: (): UsbDeviceLike => this.device,
-		});
 	}
 
 	get connectionMode(): ConnectionMode {
@@ -160,7 +155,6 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 			}
 		}
 
-		// Select the first configuration (required by WebUSB)
 		if (device.configurations && device.configurations.length > 0) {
 			const firstConfig = device.configurations[0];
 			if (firstConfig) {
@@ -285,6 +279,22 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 		return result;
 	}
 
+	private sendBuilder(builder: {
+		build(mode: ConnectionMode): Buffer;
+		bmRequestType: number;
+		bRequest: number;
+		wValue: number;
+		wIndex: number;
+	}): Promise<number> {
+		return this.controlTransfer({
+			data: builder.build(this.connectionMode),
+			bmRequestType: builder.bmRequestType,
+			bRequest: builder.bRequest,
+			wValue: builder.wValue,
+			wIndex: builder.wIndex,
+		} as ControlTransferOut) as Promise<number>;
+	}
+
 	getBatteryLevel(timeoutMs = 1000): Promise<number> {
 		this.checkIsOpen();
 
@@ -330,68 +340,129 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 
 	onBatteryChange(listener: (battery: number) => void): () => void {
 		this.checkIsOpen();
-
 		this.on('batteryChange', listener);
-
 		return () => {
 			this.removeListener('batteryChange', listener);
 		};
 	}
 
-	getDeviceInfo(): ReturnType<SettingsWriter['getDeviceInfo']> {
-		return this.settingsWriter.getDeviceInfo();
+	setDpi(options: DpiBuilder | DpiBuilderOptions): Promise<number> {
+		this.checkIsOpen();
+		const builder = options instanceof DpiBuilder ? options : new DpiBuilder(options);
+		return this.sendBuilder(builder);
 	}
 
-	setPollingRate(rate: Rate | PollingRateBuilder): Promise<number> {
-		return this.settingsWriter.setPollingRate(rate);
-	}
-
-	setCustomMacro(options: CustomMacroBuilder | CustomMacroBuilderOptions): Promise<void>;
-	setCustomMacro(packets: [Buffer, Buffer, Buffer, Buffer]): Promise<void>;
-	setCustomMacro(
-		optionsOrPackets: CustomMacroBuilder | CustomMacroBuilderOptions | [Buffer, Buffer, Buffer, Buffer],
-	): Promise<void> {
-		return this.settingsWriter.setCustomMacro(optionsOrPackets as never);
-	}
-
-	setMacro(config: MacroBuilderOptions | MacrosBuilder): Promise<number> {
-		return this.settingsWriter.setMacro(config);
+	setPollingRate(rate: Rate | PollingRateBuilderType): Promise<number> {
+		this.checkIsOpen();
+		const builder = rate instanceof PollingRateBuilder ? rate : new PollingRateBuilder().setRate(rate);
+		return this.sendBuilder(builder);
 	}
 
 	setUserPreferences(options: UserPreferencesBuilder | UserPreferencesBuilderOptions): Promise<number> {
-		return this.settingsWriter.setUserPreferences(options);
+		this.checkIsOpen();
+		const builder = options instanceof UserPreferencesBuilder ? options : new UserPreferencesBuilder(options);
+		if (!(options instanceof UserPreferencesBuilder)) {
+			this.cachedUserPreferences = { ...options };
+		}
+		return this.sendBuilder(builder);
 	}
 
 	getCachedUserPreferences(): UserPreferencesBuilderOptions | null {
-		return this.settingsWriter.getCachedUserPreferences();
+		return this.cachedUserPreferences;
+	}
+
+	setMacro(config: MacroBuilderOptions | MacrosBuilder): Promise<number> {
+		this.checkIsOpen();
+		const builder = config instanceof MacrosBuilder ? config : new MacrosBuilder(config);
+		return this.sendBuilder(builder);
+	}
+
+	async setCustomMacro(
+		optionsOrPackets: CustomMacroBuilder | CustomMacroBuilderOptions | [Buffer, Buffer, Buffer, Buffer],
+	): Promise<void> {
+		this.checkIsOpen();
+
+		let packets: Buffer[];
+		let bmRequestType = 0x21;
+		let bRequest = 0x09;
+		let wValue = 0x0309;
+		let wIndex = 2;
+
+		if (Array.isArray(optionsOrPackets)) {
+			packets = optionsOrPackets;
+		} else {
+			const builder =
+				optionsOrPackets instanceof CustomMacroBuilder
+					? optionsOrPackets
+					: new CustomMacroBuilder(optionsOrPackets);
+			packets = builder.build(this.connectionMode);
+			bmRequestType = builder.bmRequestType;
+			bRequest = builder.bRequest;
+			wValue = builder.wValue;
+			wIndex = builder.wIndex;
+		}
+
+		// First packet: macro definition (wValue 0x0308)
+		const firstPacket = packets[0];
+		if (!firstPacket) throw new DriverError('No packets provided');
+		await this.controlTransfer({
+			data: firstPacket,
+			bmRequestType: 0x21,
+			bRequest: 0x09,
+			wValue: 0x0308,
+			wIndex: 2,
+		} as ControlTransferOut);
+
+		// Remaining packets: macro data pages
+		for (let i = 1; i < packets.length; i++) {
+			const packet = packets[i];
+			if (!packet) continue;
+			await this.controlTransfer({
+				data: packet,
+				bmRequestType,
+				bRequest,
+				wValue,
+				wIndex,
+			} as ControlTransferOut);
+		}
 	}
 
 	sendInternalStateResetReportBuilder(): Promise<number> {
-		return this.settingsWriter.sendInternalStateResetReportBuilder();
+		this.checkIsOpen();
+		return this.sendBuilder(new InternalStateResetReportBuilder());
 	}
 
 	resetPollingRate(): Promise<number> {
-		return this.settingsWriter.resetPollingRate();
-	}
-
-	setDpi(options: DpiBuilder | DpiBuilderOptions): Promise<number> {
-		return this.settingsWriter.setDpi(options);
+		this.checkIsOpen();
+		return this.sendBuilder(new PollingRateBuilder());
 	}
 
 	resetDpi(): Promise<number> {
-		return this.settingsWriter.resetDpi();
+		this.checkIsOpen();
+		return this.sendBuilder(new DpiBuilder());
 	}
 
 	resetMacro(): Promise<number> {
-		return this.settingsWriter.resetMacro();
+		this.checkIsOpen();
+		return this.sendBuilder(new MacrosBuilder());
 	}
 
 	async resetCustomMacro(): Promise<void> {
-		await this.settingsWriter.resetCustomMacro();
+		this.checkIsOpen();
+		const builder = new CustomMacroBuilder({
+			playOptions: {
+				mode: MacroMode.THE_NUMBER_OF_TIME_TO_PLAY,
+				times: 1,
+			},
+			targetButton: Button.BACKWARD,
+			macroEvents: [],
+		});
+		await this.setCustomMacro(builder);
 	}
 
 	resetUserPreferences(): Promise<number> {
-		return this.settingsWriter.resetUserPreferences();
+		this.checkIsOpen();
+		return this.sendBuilder(new UserPreferencesBuilder().setKeyResponse(8));
 	}
 
 	async reset(): Promise<void> {
@@ -402,6 +473,28 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> implement
 		await this.resetPollingRate();
 		await this.resetMacro();
 		await this.resetCustomMacro();
+	}
+
+	getDeviceInfo(): {
+		manufacturer: string;
+		product: string;
+		serialNumber: string;
+		vendorId: string;
+		productId: string;
+		bcdDevice: string;
+		connectionMode: string;
+		interfaces: number;
+	} {
+		return {
+			manufacturer: 'Beken',
+			product: 'Attack Shark X11',
+			serialNumber: 'N/A',
+			vendorId: `0x${this.device.vendorId.toString(16).padStart(4, '0')}`,
+			productId: `0x${this.device.productId.toString(16).padStart(4, '0')}`,
+			bcdDevice: `${this.device.deviceVersionMajor}.${this.device.deviceVersionMinor}`,
+			connectionMode: this.connectionMode === ConnectionMode.Adapter ? 'Wireless (2.4GHz)' : 'Wired (USB)',
+			interfaces: this.device.configurations?.length ?? 0,
+		};
 	}
 }
 

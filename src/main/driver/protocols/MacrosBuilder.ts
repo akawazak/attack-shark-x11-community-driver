@@ -152,10 +152,6 @@ export class MacrosBuilder implements BaseProtocolBuilder {
 	toString(): string {
 		return this.buffer.toString('hex');
 	}
-
-	compareWithHexString(value: string): boolean {
-		return this.toString() === value;
-	}
 }
 
 export { FirmwareAction, KeyCode, MacroName, Modifiers, macroTemplates, type MacroTuple };

@@ -252,10 +252,6 @@ export class CustomMacroBuilder implements BaseProtocolBuilder {
 		return this.buffer.toString('hex');
 	}
 
-	compareWithHexString(value: string): boolean {
-		return this.toString() === value;
-	}
-
 	private handleDelay(delayMs: number): {
 		eventDelay: number;
 		extraDelay?: number;

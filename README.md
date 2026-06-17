@@ -33,7 +33,7 @@ Manual downloads are also available on the [Releases page](https://github.com/dr
 
 **App features** — Dark/Light/Cappuccino themes, i18n (EN/ES), auto-save, full config persistence across restarts, type-safe settings loading.
 
-**Platform** — Linux, macOS, Windows. 132 tests across 13 files.
+**Platform** — Linux, macOS, Windows. 121 tests across 11 files.
 
 **USB Stack** — Fully migrated from `usb` v2 (node-usb, synchronous Transfer API) to `usb` v3 (node-usb-rs, async WebUSB API). Battery monitoring uses interrupt endpoint polling via `nativeTransferIn`. Upstream bug fix submitted (node-usb-rs#4).
 
@@ -68,7 +68,7 @@ bun run package     # outputs to ./dist
 ```
 
 ```bash
-bun test            # 137 tests
+bun test            # 121 tests
 ```
 
 ---
@@ -94,7 +94,6 @@ bun test            # 137 tests
 | Attack Shark X11 | Wired | ✅ Supported |
 | Attack Shark X11 | 2.4GHz wireless | ✅ Supported |
 | Attack Shark X11 | Bluetooth | ❓ Not tested |
-| Attack Shark R1 | — | ❓ Not verified |
 
 ---
 

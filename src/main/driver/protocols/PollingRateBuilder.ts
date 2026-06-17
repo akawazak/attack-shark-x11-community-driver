@@ -53,14 +53,6 @@ export class PollingRateBuilder implements BaseProtocolBuilder {
 		return this;
 	}
 
-	/**
-	 * Creates an instance already configured for a specific rate
-	 * @deprecated
-	 */
-	static forRate(rate: Rate): PollingRateBuilder {
-		return new PollingRateBuilder({ rate });
-	}
-
 	calculateChecksum(): number {
 		return 0xff - (this.buffer[3] ?? 0x00);
 	}
@@ -100,9 +92,5 @@ export class PollingRateBuilder implements BaseProtocolBuilder {
 
 	toString(): string {
 		return this.buffer.toString('hex');
-	}
-
-	compareWithHexString(value: string): boolean {
-		return this.toString() === value;
 	}
 }

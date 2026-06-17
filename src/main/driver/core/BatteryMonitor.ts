@@ -1,7 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { ConnectionMode, type Logger } from '../types.js';
 import { TimeoutError } from '../errors.js';
-import { bufferStartsWith } from '../utils/bufferUtils.js';
 
 export interface BatteryMonitorEvents {
 	batteryChange: [battery: number];
@@ -98,7 +97,7 @@ export class BatteryMonitor extends EventEmitter<BatteryMonitorEvents> {
 			const matched =
 				this.headerPrefix === null || this.headerPrefix === undefined
 					? true
-					: bufferStartsWith(data, this.headerPrefix);
+					: data.subarray(0, this.headerPrefix.length).equals(this.headerPrefix);
 
 			if (!matched) return;
 			if (data.length < 5) return;

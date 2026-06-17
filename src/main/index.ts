@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import { AttackSharkX11, type DeviceDriver } from './driver/index.js';
+import { AttackSharkX11 } from './driver/index.js';
 import { ConnectionMode } from './driver/types.js';
 import { validateDpiConfig } from './utils/validation.js';
 import { sanitizePreferences } from './utils/preferenceSanitizer.js';
@@ -13,7 +13,7 @@ import type { UserPreferencesBuilderOptions } from './driver/protocols/UserPrefe
 import type { MacroBuilderOptions } from './driver/protocols/MacrosBuilder.js';
 import type { MacroMode } from '../shared/macro-types.js';
 
-let driver: DeviceDriver | null = null;
+let driver: AttackSharkX11 | null = null;
 // ... (in app.whenReady())
 
 function createWindow(): void {

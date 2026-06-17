@@ -37,28 +37,6 @@ export class InterfaceError extends DriverError {
 }
 
 /**
- * Basic error causing data transfer failures
- */
-export class TransferError extends DriverError {
-	constructor(
-		message: string,
-		public endpoint?: number,
-		options?: { cause?: unknown },
-	) {
-		super(message, options);
-	}
-}
-
-/**
- * Specific error related to Control Transfers (USB) failures
- */
-export class ControlTransferError extends TransferError {
-	constructor(message: string, options?: { cause?: unknown }) {
-		super(message, undefined, options);
-	}
-}
-
-/**
  * An error is thrown when an operation exceeds the expected timeout
  */
 export class TimeoutError extends DriverError {}

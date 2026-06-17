@@ -39,7 +39,7 @@ describe('InternalStateResetReportBuilder', () => {
 	it('should compare correctly with hex string', () => {
 		const builder = new InternalStateResetReportBuilder();
 		const hex = '0c0a01fe01fe00000000';
-		expect(builder.compareWithHexString(hex)).toBe(true);
-		expect(builder.compareWithHexString('invalid')).toBe(false);
+		expect(builder.toString() === hex).toBe(true);
+		expect(builder.toString() === 'invalid').toBe(false);
 	});
 });

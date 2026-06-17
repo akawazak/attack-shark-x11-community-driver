@@ -9,28 +9,28 @@ describe('PollingRateBuilder', () => {
 	});
 
 	it('should set polling rate to 125Hz (powerSaving)', () => {
-		const builder = PollingRateBuilder.forRate(Rate.powerSaving);
+		const builder = new PollingRateBuilder({ rate: Rate.powerSaving });
 		builder.build(ConnectionMode.Wired);
 		// value 0x08, complement 0xF7
 		expect(builder.toString()).toBe('06090108f700000000');
 	});
 
 	it('should set polling rate to 250Hz (office)', () => {
-		const builder = PollingRateBuilder.forRate(Rate.office);
+		const builder = new PollingRateBuilder({ rate: Rate.office });
 		builder.build(ConnectionMode.Wired);
 		// value 0x04, complement 0xFB
 		expect(builder.toString()).toBe('06090104fb00000000');
 	});
 
 	it('should set polling rate to 500Hz (gaming)', () => {
-		const builder = PollingRateBuilder.forRate(Rate.gaming);
+		const builder = new PollingRateBuilder({ rate: Rate.gaming });
 		builder.build(ConnectionMode.Wired);
 		// value 0x02, complement 0xFD
 		expect(builder.toString()).toBe('06090102fd00000000');
 	});
 
 	it('should set polling rate to 1000Hz (eSports)', () => {
-		const builder = PollingRateBuilder.forRate(Rate.eSports);
+		const builder = new PollingRateBuilder({ rate: Rate.eSports });
 		// value 0x01, complement 0xFE
 		expect(builder.toString()).toBe('06090101fe00000000');
 	});
@@ -59,8 +59,8 @@ describe('PollingRateBuilder', () => {
 		expect(builder.buffer[8]).toBe(0x00);
 	});
 
-	it('should create an instance for a specific rate using forRate', () => {
-		const builder = PollingRateBuilder.forRate(Rate.gaming);
+	it('should create an instance for a specific rate using constructor options', () => {
+		const builder = new PollingRateBuilder({ rate: Rate.gaming });
 		expect(builder.buffer[3]).toBe(0x02); // 500Hz
 	});
 
