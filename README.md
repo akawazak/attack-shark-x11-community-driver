@@ -118,5 +118,7 @@ MIT © [HarukaYamamoto0](https://github.com/HarukaYamamoto0)
 
 ## Credits
 
-- [HarukaYamamoto0](https://github.com/HarukaYamamoto0) — original X11 driver and protocol analysis
-- [xb-bx](https://github.com/xb-bx) — Attack Shark R1 driver and protocol documentation
+Special thanks to the reverse-engineering community whose work made this possible:
+
+- **[HarukaYamamoto0](https://github.com/HarukaYamamoto0)** — for the original X11 driver, detailed protocol analysis, and firmware research that forms the foundation of this project.
+- **[xb-bx](https://github.com/xb-bx)** — for the Attack Shark R1 driver, protocol documentation, and hardware testing that enabled R1 support.
