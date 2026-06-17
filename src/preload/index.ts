@@ -3,8 +3,10 @@ import type { AppSettings } from '../main/storage/settingsManager.js';
 
 // Custom APIs for renderer
 const api = {
-	connectDevice: (mode: number): Promise<{ success: boolean; error?: string }> =>
-		ipcRenderer.invoke('connect-device', mode),
+	detectDevice: (): Promise<{ detected: boolean; mode?: number; model?: string }> =>
+		ipcRenderer.invoke('detect-device'),
+	connectDevice: (params: number | { model: string; mode: number }): Promise<{ success: boolean; error?: string }> =>
+		ipcRenderer.invoke('connect-device', params),
 	getBattery: (): Promise<number> => ipcRenderer.invoke('get-battery'),
 	setDpi: (config: unknown): Promise<number> => ipcRenderer.invoke('set-dpi', config),
 	getDpi: (): Promise<Buffer> => ipcRenderer.invoke('get-dpi'),
@@ -22,6 +24,8 @@ const api = {
 	saveSettings: (settings: AppSettings): Promise<void> => ipcRenderer.invoke('save-settings', settings),
 	getSummary: (): Promise<unknown> => ipcRenderer.invoke('get-summary'),
 	getDeviceInfo: (): Promise<unknown> => ipcRenderer.invoke('get-device-info'),
+	getDeviceModel: (): Promise<'X11' | 'R1'> => ipcRenderer.invoke('get-device-model'),
+	getDeviceCapabilities: (): Promise<Record<string, boolean>> => ipcRenderer.invoke('get-device-capabilities'),
 	onBatteryUpdated: (callback: (level: number) => void): void => {
 		ipcRenderer.on('battery-updated', (_event, value) => callback(value));
 	},

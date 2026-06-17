@@ -36,6 +36,7 @@ const DEFAULT_PREFS: UserPreferences = {
 const props = defineProps<{
 	isConnected: boolean;
 	modelValue: UserPreferences;
+	deviceModel?: 'X11' | 'R1';
 }>();
 
 const emit = defineEmits(['update:modelValue', 'resetComplete']);
@@ -238,7 +239,7 @@ async function applyPreferences(showUi = true) {
 		<StatusMessage :message="statusMessage" :type="statusType" />
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-			<Card>
+			<Card v-if="deviceModel !== 'R1'">
 				<template #title>
 					<Palette class="w-6 h-6 text-shark-primary" />
 					{{ $t('preferences.lighting') }}

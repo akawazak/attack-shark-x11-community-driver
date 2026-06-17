@@ -9,6 +9,7 @@ declare module '@vue/runtime-core' {
 interface AppSettings {
 	lastTab: string;
 	connectionMode: 'Adapter' | 'Wired';
+	deviceModel: 'X11' | 'R1';
 	language: string;
 	theme: string;
 	preferences: {
@@ -31,7 +32,10 @@ interface AppSettings {
 declare global {
 	interface Window {
 		api: {
-			connectDevice: (mode: number) => Promise<{ success: boolean; error?: string }>;
+			detectDevice: () => Promise<{ detected: boolean; mode?: number; model?: string }>;
+			connectDevice: (
+				params: number | { model: string; mode: number },
+			) => Promise<{ success: boolean; error?: string }>;
 			getBattery: () => Promise<number>;
 			setDpi: (config: unknown) => Promise<number>;
 			getDpi: () => Promise<Buffer>;
@@ -49,6 +53,8 @@ declare global {
 			saveSettings: (settings: AppSettings) => Promise<void>;
 			getSummary: () => Promise<unknown>;
 			getDeviceInfo: () => Promise<unknown>;
+			getDeviceModel: () => Promise<'X11' | 'R1'>;
+			getDeviceCapabilities: () => Promise<Record<string, boolean>>;
 			onBatteryUpdated: (callback: (level: number) => void) => void;
 		};
 	}

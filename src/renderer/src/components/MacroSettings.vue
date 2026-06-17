@@ -11,6 +11,7 @@ import CustomMacroEditor from './CustomMacroEditor.vue';
 
 const props = defineProps<{
 	isConnected: boolean;
+	deviceModel?: 'X11' | 'R1';
 }>();
 
 const { t } = useI18n();
@@ -75,7 +76,10 @@ watch([selectedTemplate, selectedButton], () => debouncedApplyMacro());
 </script>
 
 <template>
-	<div class="space-y-8">
+	<div v-if="deviceModel === 'R1'" class="flex items-center justify-center h-64">
+		<p class="text-[var(--text-secondary)] text-lg">{{ $t('capabilities.notSupported') }}</p>
+	</div>
+	<div v-else class="space-y-8">
 		<div class="flex items-center justify-between">
 			<h2 class="text-3xl font-bold flex items-center gap-3 text-[var(--text-primary)]">
 				<Keyboard class="w-8 h-8 text-shark-primary" />

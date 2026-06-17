@@ -8,6 +8,7 @@ const getSettingsPath = (): string => path.join(app.getPath('userData'), 'settin
 export interface AppSettings {
 	lastTab: string;
 	connectionMode: 'Adapter' | 'Wired';
+	deviceModel: 'X11' | 'R1';
 	language: string;
 	theme: string;
 	preferences: {
@@ -30,6 +31,7 @@ export interface AppSettings {
 const DEFAULT_SETTINGS: AppSettings = {
 	lastTab: 'preferences',
 	connectionMode: 'Adapter',
+	deviceModel: 'X11',
 	language: 'en',
 	theme: 'dark',
 	preferences: {
@@ -61,6 +63,7 @@ export async function getSettings(): Promise<AppSettings> {
 		return {
 			...DEFAULT_SETTINGS,
 			...saved,
+			deviceModel: saved.deviceModel === 'R1' ? 'R1' : 'X11',
 			preferences: {
 				...DEFAULT_SETTINGS.preferences,
 				...saved.preferences,

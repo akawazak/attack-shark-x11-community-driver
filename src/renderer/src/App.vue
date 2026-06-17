@@ -19,6 +19,8 @@ import packageInfo from '../../../package.json';
 const version = packageInfo.version;
 const isConnected = ref(false);
 const connectionMode = ref<'Adapter' | 'Wired' | null>(null);
+const deviceModel = ref<'X11' | 'R1'>('X11');
+const capabilities = ref<Record<string, boolean>>({});
 const batteryLevel = ref(-1);
 const sidebarCollapsed = ref(false);
 const { toasts, removeToast } = useToast();
@@ -70,17 +72,10 @@ const connect = async (mode: number) => {
 	connectionError.value = '';
 	try {
 		if (!window.api) throw new Error('IPC API not found.');
-		const result = await window.api.connectDevice(mode);
+		// Auto-detect model: wireless PID is shared, so we don't know model yet
+		const result = await window.api.connectDevice({ model: 'X11', mode });
 		if (result.success) {
-			isConnected.value = true;
-			connectionMode.value = mode === 0xfa55 ? 'Wired' : 'Adapter';
-			if (connectionMode.value === 'Wired' && activeTab.value === 'preferences') {
-				activeTab.value = 'dpi';
-			}
-			// Refresh battery explicitly after successful connection
-			await updateBattery();
-			await fetchSummary();
-			await updateProfiles();
+			await finalizeConnection(mode);
 		} else {
 			connectionError.value = result.error || 'Unknown error';
 		}
@@ -91,8 +86,53 @@ const connect = async (mode: number) => {
 	}
 };
 
+const connectWired = async () => {
+	lastMode.value = 0xfa55; // Try X11 wired first
+	connectionError.value = '';
+	try {
+		if (!window.api) throw new Error('IPC API not found.');
+		// Try X11 wired first
+		let result = await window.api.connectDevice({ model: 'X11', mode: 0xfa55 });
+		if (!result.success) {
+			// Try R1 wired
+			result = await window.api.connectDevice({ model: 'R1', mode: 0xfa61 });
+			if (result.success) {
+				await finalizeConnection(0xfa61);
+				return;
+			}
+		} else {
+			await finalizeConnection(0xfa55);
+			return;
+		}
+		connectionError.value = result.error || 'Unknown error';
+	} catch (err: unknown) {
+		const error = err instanceof Error ? err : new Error(String(err));
+		console.error('IPC Error:', error);
+		connectionError.value = `Connection Error: ${error.message}`;
+	}
+};
+
+const finalizeConnection = async (mode: number) => {
+	isConnected.value = true;
+	connectionMode.value = mode === 0xfa55 || mode === 0xfa61 ? 'Wired' : 'Adapter';
+	if (connectionMode.value === 'Wired' && activeTab.value === 'preferences') {
+		activeTab.value = 'dpi';
+	}
+	const caps = await window.api.getDeviceCapabilities();
+	capabilities.value = caps;
+	const model = await window.api.getDeviceModel();
+	deviceModel.value = model as 'X11' | 'R1';
+	await updateBattery();
+	await fetchSummary();
+	await updateProfiles();
+};
+
 const retryConnection = async () => {
-	await connect(lastMode.value);
+	if (lastMode.value === 0xfa60) {
+		await connect(0xfa60);
+	} else {
+		await connectWired();
+	}
 };
 
 const fetchSummary = async () => {
@@ -124,6 +164,7 @@ onMounted(async () => {
 		if (settings) {
 			if (settings.lastTab) activeTab.value = settings.lastTab;
 			if (settings.connectionMode) connectionMode.value = settings.connectionMode;
+			if (settings.deviceModel) deviceModel.value = settings.deviceModel;
 			if (settings.theme) {
 				localStorage.setItem('theme', settings.theme);
 				document.documentElement.className = settings.theme === 'dark' ? '' : settings.theme;
@@ -135,16 +176,30 @@ onMounted(async () => {
 	} catch (err) {
 		console.warn('App initialization skipped (API not available):', err);
 	}
+
+	// Auto-detect connected device on startup
+	try {
+		const detection = await window.api.detectDevice();
+		if (detection.detected && detection.mode != null && detection.model) {
+			const result = await window.api.connectDevice({ model: detection.model, mode: detection.mode });
+			if (result.success) {
+				await finalizeConnection(detection.mode);
+			}
+		}
+	} catch {
+		// silently fail — manual connect is available
+	}
 });
 
 watch(
-	() => [activeTab.value, preferences.value, connectionMode.value],
+	() => [activeTab.value, preferences.value, connectionMode.value, deviceModel.value],
 	async () => {
 		const settings = await window.api.getSettings();
 		await window.api.saveSettings({
 			...settings,
 			lastTab: activeTab.value,
 			connectionMode: connectionMode.value,
+			deviceModel: deviceModel.value,
 			theme: localStorage.getItem('theme') || 'dark',
 			preferences: JSON.parse(JSON.stringify(toRaw(preferences.value))),
 		});
@@ -244,8 +299,9 @@ watch(
 					<Zap class="w-5 h-5 flex-shrink-0" />
 					<span v-if="!sidebarCollapsed">{{ $t('sidebar.dpi') }}</span>
 				</button>
-				<button
-					@click="activeTab = 'macros'"
+			<button
+				v-if="capabilities.macros !== false"
+				@click="activeTab = 'macros'"
 					:class="[
 						'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
 						sidebarCollapsed ? 'justify-center w-10 h-10 p-0' : 'w-full',
@@ -305,44 +361,42 @@ watch(
 					<MousePointer2 class="w-12 h-12 text-[var(--text-muted)]" />
 				</div>
 
-				<h2 class="text-2xl font-bold mb-2 text-[var(--text-primary)]">
-					{{ $t('connection.title') }}
-				</h2>
-				<p class="text-[var(--text-secondary)] mb-8 max-w-sm">
-					{{ $t('connection.description') }}
-				</p>
+			<h2 class="text-2xl font-bold mb-2 text-[var(--text-primary)]">
+				{{ $t('connection.title') }}
+			</h2>
+			<p class="text-[var(--text-secondary)] mb-8 max-w-sm">
+				{{ $t('connection.description') }}
+			</p>
 
-				<!-- Connection mode selection cards -->
-				<div class="grid grid-cols-2 gap-4 w-full max-w-sm">
-					<button
-						@click="connect(0xfa60)"
-						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-5 rounded-xl border border-[var(--connection-card-border)] transition-all group flex flex-col items-center"
-						aria-label="Connect via 2.4GHz wireless adapter"
-					>
-						<Zap
-							class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary transition-colors"
-						/>
-						<span class="block font-semibold text-[var(--text-primary)]">{{
-							$t('connection.adapter')
-						}}</span>
-						<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
-							$t('connection.adapterDesc')
-						}}</span>
-					</button>
-					<button
-						@click="connect(0xfa55)"
-						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-5 rounded-xl border border-[var(--connection-card-border)] transition-all group flex flex-col items-center"
-						aria-label="Connect via USB cable"
-					>
-						<ShieldAlert
-							class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary transition-colors"
-						/>
-						<span class="block font-semibold text-[var(--text-primary)]">{{ $t('connection.wired') }}</span>
-						<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
-							$t('connection.wiredDesc')
-						}}</span>
-					</button>
-				</div>
+			<!-- Single connection mode selector (model auto-detected after connect) -->
+			<div class="grid grid-cols-2 gap-4 w-full max-w-sm">
+				<button
+					@click="connect(0xfa60)"
+					class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-5 rounded-xl border border-[var(--connection-card-border)] transition-all group flex flex-col items-center"
+					aria-label="Connect via 2.4GHz wireless adapter"
+				>
+					<Zap
+						class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary transition-colors"
+					/>
+					<span class="block font-semibold text-[var(--text-primary)]">{{ $t('connection.adapter') }}</span>
+					<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
+						$t('connection.adapterDesc')
+					}}</span>
+				</button>
+				<button
+					@click="connectWired"
+					class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-5 rounded-xl border border-[var(--connection-card-border)] transition-all group flex flex-col items-center"
+					aria-label="Connect via USB cable"
+				>
+					<ShieldAlert
+						class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary transition-colors"
+					/>
+					<span class="block font-semibold text-[var(--text-primary)]">{{ $t('connection.wired') }}</span>
+					<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
+						$t('connection.wiredDesc')
+					}}</span>
+				</button>
+			</div>
 
 				<!-- Error state with StatusMessage component and retry -->
 				<div v-if="connectionError" class="mt-6 w-full max-w-sm space-y-3">
@@ -414,21 +468,30 @@ watch(
 									{{ ledModeName }}
 								</p>
 							</div>
+							<div
+								class="bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-card)] shadow-md transition-all duration-300 hover:shadow-xl"
+							>
+								<h3 class="text-sm text-[var(--text-secondary)] mb-1">{{ $t('overview.device') }}</h3>
+								<p class="text-2xl font-bold text-[var(--text-primary)]">
+									Attack Shark {{ deviceModel }}
+								</p>
+							</div>
 						</div>
 					</div>
 
 					<!-- Preferences Content -->
 					<div v-if="activeTab === 'preferences' && !(connectionMode === 'Wired' && isConnected)">
-						<UserPreferences
-							v-model="preferences"
-							:isConnected="isConnected"
-							@reset-complete="isConnected = false"
-						/>
+					<UserPreferences
+						v-model="preferences"
+						:isConnected="isConnected"
+						:deviceModel="deviceModel"
+						@reset-complete="isConnected = false"
+					/>
 					</div>
 
 					<!-- DPI Content -->
 					<div v-if="activeTab === 'dpi'">
-						<DpiSettings :isConnected="isConnected" />
+						<DpiSettings :isConnected="isConnected" :deviceModel="deviceModel" />
 					</div>
 
 					<!-- Macros Content -->

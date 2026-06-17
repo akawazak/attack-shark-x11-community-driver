@@ -13,19 +13,41 @@ const { t } = useI18n();
 
 const props = defineProps<{
 	isConnected: boolean;
+	deviceModel?: 'X11' | 'R1';
 }>();
+
+const R1_DEFAULTS = [800, 1600, 3200, 4000, 5000, 12000] as [number, number, number, number, number, number];
+const X11_DEFAULTS = [800, 1600, 2400, 3200, 5000, 22000] as [number, number, number, number, number, number];
 
 const dpiConfig = reactive({
 	activeStage: 2,
 	angleSnap: false,
 	ripplerControl: true,
-	dpiValues: [800, 1600, 2400, 3200, 5000, 22000] as [number, number, number, number, number, number],
+	dpiValues: (props.deviceModel === 'R1' ? R1_DEFAULTS : X11_DEFAULTS).slice() as [
+		number,
+		number,
+		number,
+		number,
+		number,
+		number,
+	],
 });
 
 onMounted(async () => {
 	const settings = await window.api.getSettings();
 	if (settings && settings.dpiConfig) {
 		Object.assign(dpiConfig, settings.dpiConfig);
+		// Clamp DPI values to model range
+		const max = props.deviceModel === 'R1' ? 18000 : 22000;
+		const min = props.deviceModel === 'R1' ? 100 : 50;
+		dpiConfig.dpiValues = dpiConfig.dpiValues.map((v) => Math.max(min, Math.min(max, v))) as [
+			number,
+			number,
+			number,
+			number,
+			number,
+			number,
+		];
 	}
 
 	// Set up watcher after initial load so it doesn't fire on mount
@@ -97,10 +119,10 @@ const applyDpi = async () => {
 	}
 };
 
-// DPI Steps are generally 50 or 100
-const dpiMin = 50;
-const dpiMax = 22000;
-const dpiStep = 50;
+// DPI range depends on device model
+const dpiMin = computed(() => (props.deviceModel === 'R1' ? 100 : 50));
+const dpiMax = computed(() => (props.deviceModel === 'R1' ? 18000 : 22000));
+const dpiStep = computed(() => (props.deviceModel === 'R1' ? 100 : 50));
 </script>
 
 <template>

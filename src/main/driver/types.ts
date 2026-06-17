@@ -6,7 +6,14 @@ export enum ConnectionMode {
 	Adapter = 0xfa60,
 	/** Wired mode via USB cable (Attack Shark X11) */
 	Wired = 0xfa55,
+	/** Wired mode via USB cable (Attack Shark R1) */
+	R1Wired = 0xfa61,
 }
+
+/**
+ * Device model identifier.
+ */
+export type DeviceModel = 'X11' | 'R1';
 
 /**
  * Base structure for USB control transfer options.

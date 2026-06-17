@@ -2,7 +2,8 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { AttackSharkX11 } from './driver/index.js';
-import { ConnectionMode } from './driver/types.js';
+import { AttackSharkR1 } from './driver/core/AttackSharkR1.js';
+import { ConnectionMode, type DeviceModel } from './driver/types.js';
 import { validateDpiConfig } from './utils/validation.js';
 import { sanitizePreferences } from './utils/preferenceSanitizer.js';
 import * as profileManager from './storage/profileManager.js';
@@ -12,8 +13,10 @@ import { CustomMacroBuilder, type CustomMacroBuilderOptions } from './driver/pro
 import type { UserPreferencesBuilderOptions } from './driver/protocols/UserPreferencesBuilder.js';
 import type { MacroBuilderOptions } from './driver/protocols/MacrosBuilder.js';
 import type { MacroMode } from '../shared/macro-types.js';
+import { usb } from 'usb';
 
-let driver: AttackSharkX11 | null = null;
+let driver: AttackSharkX11 | AttackSharkR1 | null = null;
+let deviceModel: DeviceModel = 'X11';
 // ... (in app.whenReady())
 
 function createWindow(): void {
@@ -67,18 +70,32 @@ app.whenReady().then(() => {
 	});
 
 	// IPC Handlers
-	ipcMain.handle('connect-device', async (_, mode: ConnectionMode) => {
+	ipcMain.handle('connect-device', async (_, params: number | { model: DeviceModel; mode: number }) => {
 		try {
+			// Backward compat: old signature passes just a number
+			let model: DeviceModel = 'X11';
+			let mode: number;
+			if (typeof params === 'number') {
+				mode = params;
+			} else {
+				model = params.model;
+				mode = params.mode;
+			}
+
 			const oldDriver = driver;
 			if (oldDriver) {
 				await oldDriver.close();
 			}
 
-			const newDriver = new AttackSharkX11({ connectionMode: mode });
+			let newDriver: AttackSharkX11 | AttackSharkR1;
+			if (model === 'R1') {
+				newDriver = new AttackSharkR1({ connectionMode: mode as ConnectionMode });
+			} else {
+				newDriver = new AttackSharkX11({ connectionMode: mode as ConnectionMode });
+			}
 
 			await newDriver.open();
 
-			// Setup battery listener to push to renderer
 			newDriver.on('batteryChange', (level) => {
 				const windows = BrowserWindow.getAllWindows();
 				windows.forEach((w) => w.webContents.send('battery-updated', level));
@@ -86,6 +103,7 @@ app.whenReady().then(() => {
 
 			// eslint-disable-next-line require-atomic-updates
 			driver = newDriver;
+			deviceModel = model;
 			return { success: true };
 		} catch (error: unknown) {
 			const err = error instanceof Error ? error : new Error(String(error));
@@ -119,7 +137,10 @@ app.whenReady().then(() => {
 
 	ipcMain.handle('set-polling-rate', (_, rate: number) => {
 		if (!driver) throw new Error('Device not connected');
-		return driver.setPollingRate(rate);
+		if (deviceModel === 'R1') {
+			return (driver as AttackSharkR1).setPollingRate(rate as never);
+		}
+		return (driver as AttackSharkX11).setPollingRate(rate as never);
 	});
 
 	ipcMain.handle('set-user-preferences', (_, prefs: UserPreferencesBuilderOptions) => {
@@ -130,8 +151,9 @@ app.whenReady().then(() => {
 	ipcMain.handle('get-dpi', () => {
 		if (!driver) throw new Error('Device not connected');
 
-		// Wired mode does not support GET_REPORT — return empty buffer
-		if (driver.connectionMode === ConnectionMode.Wired) {
+		const isWired =
+			driver.connectionMode === ConnectionMode.Wired || driver.connectionMode === ConnectionMode.R1Wired;
+		if (isWired) {
 			return Buffer.alloc(0);
 		}
 
@@ -148,12 +170,21 @@ app.whenReady().then(() => {
 		if (!driver) throw new Error('Device not connected');
 
 		try {
-			const isWired = driver.connectionMode === ConnectionMode.Wired;
+			const isWired =
+				driver.connectionMode === ConnectionMode.Wired || driver.connectionMode === ConnectionMode.R1Wired;
 
-			// Wired mode does not support GET_REPORT — use cached preferences
 			if (isWired) {
 				const cached = driver.getCachedUserPreferences() as UserPreferencesBuilderOptions | null;
 				if (!cached) return null;
+
+				if (deviceModel === 'R1') {
+					return {
+						sleepTime: cached.sleepTime ?? 0.5,
+						keyResponse: cached.keyResponse ?? 4,
+						deepSleepTime: cached.deepSleepTime ?? 10,
+					};
+				}
+
 				return {
 					lightMode: cached.lightMode ?? 0,
 					ledSpeed: cached.ledSpeed ?? 3,
@@ -175,6 +206,14 @@ app.whenReady().then(() => {
 			if (!prefs || prefs.length < 15) {
 				console.warn('Device response too short for summary, got', prefs?.length, 'bytes');
 				return null;
+			}
+
+			if (deviceModel === 'R1') {
+				return {
+					sleepTime: (prefs[9] ?? 1) / 2,
+					keyResponse: prefs[10] ?? 4,
+					deepSleepTime: Math.max(1, Math.min(60, Math.round(((prefs[5] ?? 0xa8) - 0x08) / 0x10))),
+				};
 			}
 
 			const configByte = prefs[4] ?? 0;
@@ -208,15 +247,17 @@ app.whenReady().then(() => {
 
 	ipcMain.handle('set-macro', (_, config: MacroBuilderOptions) => {
 		if (!driver) throw new Error('Device not connected');
-		return driver.setMacro(config);
+		if (deviceModel === 'R1') throw new Error('Macros not supported on R1');
+		return (driver as AttackSharkX11).setMacro(config);
 	});
 
 	ipcMain.handle('set-custom-macro', (_, options: CustomMacroBuilderOptions) => {
 		if (!driver) throw new Error('Device not connected');
+		if (deviceModel === 'R1') throw new Error('Macros not supported on R1');
 
 		const builder = new CustomMacroBuilder(options);
 
-		return driver.setCustomMacro(builder);
+		return (driver as AttackSharkX11).setCustomMacro(builder);
 	});
 
 	interface SendMacroEvent {
@@ -236,6 +277,7 @@ app.whenReady().then(() => {
 			},
 		) => {
 			if (!driver) throw new Error('Device not connected');
+			if (deviceModel === 'R1') throw new Error('Macros not supported on R1');
 
 			const builder = new CustomMacroBuilder({
 				targetButton: config.targetButton,
@@ -246,9 +288,65 @@ app.whenReady().then(() => {
 				builder.addEvent(event.keyCode, event.delayMs, event.isRelease);
 			}
 
-			return driver.setCustomMacro(builder);
+			return (driver as AttackSharkX11).setCustomMacro(builder);
 		},
 	);
+
+	ipcMain.handle('get-device-model', () => deviceModel);
+
+	ipcMain.handle('get-device-capabilities', () => {
+		if (deviceModel === 'R1') {
+			return {
+				dpi: true,
+				pollingRate: true,
+				battery: true,
+				rgb: false,
+				macros: false,
+				buttonRemap: false,
+				lightMode: false,
+				ledSpeed: false,
+				sleepTime: true,
+				deepSleepTime: true,
+				keyResponse: true,
+				rippleControl: true,
+				angleSnap: true,
+			};
+		}
+		return {
+			dpi: true,
+			pollingRate: true,
+			battery: true,
+			rgb: true,
+			macros: true,
+			buttonRemap: true,
+			lightMode: true,
+			ledSpeed: true,
+			sleepTime: true,
+			deepSleepTime: true,
+			keyResponse: true,
+			rippleControl: true,
+			angleSnap: true,
+		};
+	});
+
+	ipcMain.handle('detect-device', async () => {
+		try {
+			const knownPIDs: Array<{ mode: number; model: DeviceModel }> = [
+				{ mode: 0xfa60, model: 'X11' },
+				{ mode: 0xfa55, model: 'X11' },
+				{ mode: 0xfa61, model: 'R1' },
+			];
+			for (const { mode, model } of knownPIDs) {
+				const device = await usb.findDeviceByIds(0x1d57, mode);
+				if (device) {
+					return { detected: true, mode, model };
+				}
+			}
+			return { detected: false };
+		} catch {
+			return { detected: false };
+		}
+	});
 
 	ipcMain.handle('list-profiles', () => profileManager.listProfiles());
 	ipcMain.handle('save-profile', (_, name: string, data: unknown) => profileManager.saveProfile(name, data));

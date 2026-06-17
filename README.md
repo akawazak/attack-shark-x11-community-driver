@@ -31,9 +31,11 @@ Manual downloads are also available on the [Releases page](https://github.com/dr
 
 **Device control** — DPI stages, button remapping, macros with timing, lighting (mode/speed/color), polling rate (125–1000 Hz), battery monitoring, device reset.
 
-**App features** — Dark/Light/Cappuccino themes, i18n (EN/ES), auto-save, full config persistence across restarts, type-safe settings loading.
+**Supported models** — Attack Shark **X11** and **R1** (auto-detected on startup).
 
-**Platform** — Linux, macOS, Windows. 121 tests across 11 files.
+**App features** — Dark/Light/Cappuccino themes, i18n (EN/ES), auto-save, full config persistence across restarts, type-safe settings loading, auto-detect connected device on launch.
+
+**Platform** — Linux, macOS, Windows. 121+ tests across 11 files.
 
 **USB Stack** — Fully migrated from `usb` v2 (node-usb, synchronous Transfer API) to `usb` v3 (node-usb-rs, async WebUSB API). Battery monitoring uses interrupt endpoint polling via `nativeTransferIn`. Upstream bug fix submitted (node-usb-rs#4).
 
@@ -48,6 +50,7 @@ The mouse needs a udev rule so the app can access it without `sudo`:
 sudo tee /etc/udev/rules.d/99-attack-shark-x11.rules > /dev/null <<'UDEV'
 SUBSYSTEM=="usb", ATTR{idVendor}=="1d57", ATTR{idProduct}=="fa60", MODE="0666", GROUP="plugdev"
 SUBSYSTEM=="usb", ATTR{idVendor}=="1d57", ATTR{idProduct}=="fa55", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="usb", ATTR{idVendor}=="1d57", ATTR{idProduct}=="fa61", MODE="0666", GROUP="plugdev"
 UDEV
 
 # 2. Reload rules
@@ -68,7 +71,7 @@ bun run package     # outputs to ./dist
 ```
 
 ```bash
-bun test            # 121 tests
+bun test            # 121+ tests
 ```
 
 ---
@@ -83,7 +86,7 @@ bun test            # 121 tests
 | **Weight** | ~63g |
 | **Battery** | Up to 65 hrs / 2–3 hr charge |
 | **Connectivity** | Wired + 2.4GHz wireless (Bluetooth untested) |
-| **Vendor / Product** | `0x1d57` / `0xfa60` (wireless), `0xfa55` (wired) |
+| **Vendor / Product** | `0x1d57` / `0xfa60` (wireless), `0xfa55` (X11 wired), `0xfa61` (R1 wired) |
 
 ---
 
@@ -94,6 +97,8 @@ bun test            # 121 tests
 | Attack Shark X11 | Wired | ✅ Supported |
 | Attack Shark X11 | 2.4GHz wireless | ✅ Supported |
 | Attack Shark X11 | Bluetooth | ❓ Not tested |
+| Attack Shark R1 | Wired | ✅ Supported |
+| Attack Shark R1 | 2.4GHz wireless | ✅ Supported (via X11 compatibility) |
 
 ---
 
@@ -108,3 +113,10 @@ Reverse-engineering effort. PRs welcome for protocol docs, features, or hardware
 MIT © [HarukaYamamoto0](https://github.com/HarukaYamamoto0)
 
 *Not affiliated with Attack Shark. Use at your own risk.*
+
+---
+
+## Credits
+
+- [HarukaYamamoto0](https://github.com/HarukaYamamoto0) — original X11 driver and protocol analysis
+- [xb-bx](https://github.com/xb-bx) — Attack Shark R1 driver and protocol documentation

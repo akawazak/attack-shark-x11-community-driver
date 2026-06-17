@@ -30,7 +30,7 @@
 		"deviceName": "Attack Shark X11"
 	},
 	"connection": {
-		"title": "Conecta tu X11",
+		"title": "Conecta tu dispositivo",
 		"description": "Elige cómo conectar tu mouse para comenzar la configuración.",
 		"adapter": "Adaptador 2.4G",
 		"adapterDesc": "Conecta mediante el adaptador inalámbrico 2.4GHz incluido",
@@ -41,7 +41,11 @@
 		"disconnected": "Dispositivo Desconectado",
 		"wiredDisplay": "Cable",
 		"errorTip": "Consejo: Si el dispositivo está ocupado, intenta desconectarlo y volver a conectarlo.",
-		"udevTip": "Problema de permisos detectado. Asegúrate de configurar las reglas udev (ver README) o ejecuta la app con los permisos adecuados."
+		"udevTip": "Problema de permisos detectado. Asegúrate de configurar las reglas udev (ver README) o ejecuta la app con los permisos adecuados.",
+		"x11": "Attack Shark X11",
+		"r1": "Attack Shark R1",
+		"x11Desc": "PAW3311, 22000 DPI, RGB",
+		"r1Desc": "18000 DPI, ultraligero"
 	},
 	"preferences": {
 		"title": "Preferencias de Usuario",
@@ -130,7 +134,8 @@
 		"connection": "Conexión",
 		"ledMode": "Modo LED",
 		"wireless": "2.4GHz",
-		"batteryUnknown": "N/A"
+		"batteryUnknown": "N/A",
+		"device": "Dispositivo"
 	},
 	"deviceInfo": {
 		"title": "Información del Dispositivo",
@@ -150,6 +155,9 @@
 		"serialNumber": "Número de Serie",
 		"refreshHint": "Haz clic en \"Actualizar\" para cargar la información del dispositivo",
 		"connectHint": "Conecta un dispositivo para ver información"
+	},
+	"capabilities": {
+		"notSupported": "Esta función no está disponible en tu dispositivo"
 	},
 	"reset": {
 		"button": "Restablecer Dispositivo",
