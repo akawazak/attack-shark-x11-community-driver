@@ -29,6 +29,7 @@ write_udev() {
 	sudo tee "$UDEV_RULES" >/dev/null <<'UDEV'
 SUBSYSTEM=="usb", ATTR{idVendor}=="1d57", ATTR{idProduct}=="fa60", MODE="0666", GROUP="plugdev"
 SUBSYSTEM=="usb", ATTR{idVendor}=="1d57", ATTR{idProduct}=="fa55", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="usb", ATTR{idVendor}=="1d57", ATTR{idProduct}=="fa61", MODE="0666", GROUP="plugdev"
 UDEV
 	sudo udevadm control --reload-rules
 	sudo udevadm trigger
