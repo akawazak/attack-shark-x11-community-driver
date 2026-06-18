@@ -1,4 +1,4 @@
-import { usb } from 'usb';
+import { usb } from '../usb.js';
 import { EventEmitter } from 'node:events';
 import { DeviceError, DriverError, InterfaceError, TimeoutError } from '../errors.js';
 import { R1DpiBuilder, type R1DpiBuilderOptions } from '../protocols/R1DpiBuilder.js';

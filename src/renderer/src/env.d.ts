@@ -55,6 +55,12 @@ declare global {
 			getDeviceInfo: () => Promise<unknown>;
 			getDeviceModel: () => Promise<'X11' | 'X11SE' | 'R1'>;
 			getDeviceCapabilities: () => Promise<Record<string, boolean>>;
+			installUsbDriver: () => Promise<{
+				success: boolean;
+				alreadyInstalled: boolean;
+				output: string;
+				error?: string;
+			}>;
 			onBatteryUpdated: (callback: (level: number) => void) => void;
 		};
 	}

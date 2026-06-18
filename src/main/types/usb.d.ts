@@ -41,7 +41,11 @@ declare module 'usb' {
 		nativeTransferOut(endpointNumber: number, timeout: number, data: Uint8Array): Promise<number>;
 	}
 
-	export const usb: {
-		findDeviceByIds(vendorId: number, productId: number): Promise<UsbDevice | null>;
-	};
+	export function nativeFindDeviceByIds(vendorId: number, productId: number): Promise<UsbDevice | null>;
+
+	export const usb:
+		| {
+				findDeviceByIds(vendorId: number, productId: number): Promise<UsbDevice | null>;
+		  }
+		| undefined;
 }

@@ -42,10 +42,11 @@
 	],
 	"main": "./out/main/index.js",
 	"scripts": {
-		"dev": "electron-vite dev",
-		"build": "electron-vite build",
+		"dev": "npm run copy-driver-inf && electron-vite dev",
+		"build": "npm run copy-driver-inf && electron-vite build",
 		"preview": "electron-vite preview",
-		"package": "electron-vite build && electron-builder",
+		"package": "npm run copy-driver-inf && electron-vite build && electron-builder",
+		"copy-driver-inf": "node scripts/copy-driver-inf.cjs",
 		"lint": "bunx eslint . --ext .ts --cache --cache-strategy content",
 		"lint:fix": "bunx eslint . --ext .ts --fix --cache --cache-strategy content",
 		"format": "bunx prettier --check . --cache --cache-strategy content",
@@ -71,8 +72,18 @@
 		],
 		"files": [
 			"out/**/*",
-			"package.json"
+			"package.json",
+			"drivers/**/*"
 		],
+		"extraResources": [
+			{
+				"from": "drivers",
+				"to": "drivers",
+				"filter": ["**/*.inf"]
+			}
+		],
+		"nodeGypRebuild": false,
+		"nativeRebuilder": "legacy",
 		"linux": {
 			"target": [
 				"AppImage",

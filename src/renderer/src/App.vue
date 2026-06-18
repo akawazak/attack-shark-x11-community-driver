@@ -58,6 +58,8 @@ const connectionError = ref('');
 const activeTab = ref('preferences');
 const lastMode = ref(0xfa60);
 const batteryPollInterval = ref<ReturnType<typeof setInterval> | null>(null);
+const isInstallingDriver = ref(false);
+const isWindows = ref(false);
 
 const BATTERY_POLL_MS = 30_000; // Poll every 30 s as fallback
 
@@ -79,6 +81,47 @@ const isPermissionError = computed(() => {
 	const msg = connectionError.value.toLowerCase();
 	return msg.includes('permission') || msg.includes('eacces') || msg.includes('access');
 });
+
+const isDeviceMissing = computed(() => {
+	const msg = connectionError.value.toLowerCase();
+	return msg.includes('not found') || msg.includes('no such device') || msg.includes('libusb_error');
+});
+
+const needsWindowsDriverInstall = computed(() => {
+	if (!isWindows.value || !connectionError.value) return false;
+	const msg = connectionError.value.toLowerCase();
+	return (
+		isDeviceMissing.value ||
+		isPermissionError.value ||
+		msg.includes('claim interface') ||
+		msg.includes('interface 2') ||
+		msg.includes('hid')
+	);
+});
+
+const installDriver = async () => {
+	if (!window.api?.installUsbDriver) return;
+	isInstallingDriver.value = true;
+	try {
+		const result = await window.api.installUsbDriver();
+		if (result.success) {
+			if (result.alreadyInstalled) {
+				connectionError.value = 'Driver is already installed. Try replugging the mouse and clicking Retry.';
+			} else {
+				connectionError.value = '';
+				await retryConnection();
+				return;
+			}
+		} else {
+			connectionError.value = `Driver install failed: ${result.error ?? 'unknown error'}`;
+		}
+	} catch (err: unknown) {
+		const error = err instanceof Error ? err : new Error(String(err));
+		connectionError.value = `Driver install failed: ${error.message}`;
+	} finally {
+		isInstallingDriver.value = false;
+	}
+};
 
 const updateProfiles = async () => {
 	profiles.value = await window.api.listProfiles();
@@ -177,6 +220,7 @@ onUnmounted(() => {
 });
 
 onMounted(async () => {
+	isWindows.value = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent || '');
 	try {
 		window.api.onBatteryUpdated((level: number) => {
 			batteryLevel.value = level;
@@ -431,6 +475,22 @@ watch(
 					>
 						{{ $t('connection.udevTip') }}
 					</div>
+					<div
+						v-if="needsWindowsDriverInstall"
+						class="text-xs text-[var(--text-muted)] bg-[var(--bg-elevated)] p-3 rounded-lg"
+					>
+						{{ $t('connection.driverTip') }}
+					</div>
+					<BaseButton
+						v-if="needsWindowsDriverInstall"
+						@click="installDriver"
+						variant="minimal"
+						class="w-full"
+						:disabled="isInstallingDriver"
+						aria-label="Install WinUSB driver for Attack Shark X11"
+					>
+						{{ isInstallingDriver ? $t('connection.installingDriver') : $t('connection.installDriver') }}
+					</BaseButton>
 					<BaseButton
 						@click="retryConnection"
 						variant="green"

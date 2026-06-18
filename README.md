@@ -58,6 +58,35 @@ UDEV
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
+## Windows Setup (one-time driver install)
+
+On Windows the mouse is bound to the in-box HID class driver, which does not
+expose libusb-style control transfers. The app needs the in-box Microsoft
+**WinUSB** driver bound to the vendor/control interface only: VID `1D57`, PIDs
+`FA55` / `FA60` / `FA61`, interface `MI_02`. The keyboard and mouse HID
+interfaces stay on the normal Windows HID drivers.
+
+**The app handles this for you** — if the mouse isn't found, the connection
+screen will show an **Install USB Driver** button. Click it, accept the UAC
+prompt, and the app will run `pnputil /add-driver` against the bundled INF.
+After it succeeds, replug the mouse once and you're done — the install is
+one-time per machine.
+
+For release builds, Windows requires this INF to be shipped as a signed driver
+package with a catalog (`.cat`). The INF itself uses only Microsoft's in-box
+WinUSB driver; the app does not bundle a third-party kernel driver. Until the
+driver package is signed through Microsoft's driver signing flow, Windows will
+reject it with a missing digital signature error.
+
+If you'd rather do it manually (e.g. you don't want to grant the app admin):
+
+```powershell
+# Run from an elevated PowerShell, pointing at the INF bundled with the app.
+pnputil /add-driver "$env:LOCALAPPDATA\Programs\Attack Shark X11 Driver\resources\drivers\attack-shark-x11-winusb.inf" /install
+
+# Then unplug and replug the mouse.
+```
+
 ---
 
 ## Build From Source

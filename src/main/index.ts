@@ -13,7 +13,8 @@ import { CustomMacroBuilder, type CustomMacroBuilderOptions } from './driver/pro
 import type { UserPreferencesBuilderOptions } from './driver/protocols/UserPreferencesBuilder.js';
 import type { MacroBuilderOptions } from './driver/protocols/MacrosBuilder.js';
 import type { MacroMode } from '../shared/macro-types.js';
-import { usb } from 'usb';
+import { installUsbDriver } from './utils/driverInstaller.js';
+import { usb } from './driver/usb.js';
 
 let driver: AttackSharkX11 | AttackSharkR1 | null = null;
 let deviceModel: DeviceModel = 'X11';
@@ -130,6 +131,10 @@ app.whenReady().then(() => {
 			console.error('Connection failed:', err);
 			return { success: false, error: err.message };
 		}
+	});
+
+	ipcMain.handle('install-usb-driver', () => {
+		return installUsbDriver();
 	});
 
 	ipcMain.handle('get-battery', async () => {

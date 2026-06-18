@@ -1,0 +1,51 @@
+; -----------------------------------------------------------------------------
+; Attack Shark X11 / R1 / X11SE - WinUSB driver mapping
+;
+; Binds interface 2 (MI_02) of VID 1D57 / PIDs FA55, FA60, and FA61 to
+; Microsoft's in-box WinUSB function driver so node-usb-rs/libusb can open the
+; vendor/control interface on Windows while keyboard/mouse HID interfaces remain
+; on the normal Windows HID drivers.
+;
+; This INF references only Microsoft in-box driver sections. Windows still treats
+; the INF as a driver package; production distribution should use a signed CAT
+; produced through the Windows Hardware Developer Center.
+; -----------------------------------------------------------------------------
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = USBDevice
+ClassGUID   = {88BAE032-5A81-49f0-BC3D-A4FF138216D6}
+Provider    = %ManufacturerName%
+DriverVer   = 06/18/2026,1.0.0.0
+PnpLockdown = 1
+
+[Manufacturer]
+%ManufacturerName% = Standard,NTamd64,NTarm64
+
+[Standard.NTamd64]
+%DeviceName% = USB_Install, USB\VID_1D57&PID_FA55&MI_02
+%DeviceName% = USB_Install, USB\VID_1D57&PID_FA60&MI_02
+%DeviceName% = USB_Install, USB\VID_1D57&PID_FA61&MI_02
+
+[Standard.NTarm64]
+%DeviceName% = USB_Install, USB\VID_1D57&PID_FA55&MI_02
+%DeviceName% = USB_Install, USB\VID_1D57&PID_FA60&MI_02
+%DeviceName% = USB_Install, USB\VID_1D57&PID_FA61&MI_02
+
+[USB_Install]
+Include = winusb.inf
+Needs   = WINUSB.NT
+
+[USB_Install.Services]
+Include = winusb.inf
+Needs   = WINUSB.NT.Services
+
+[USB_Install.HW]
+AddReg = Dev_AddReg
+
+[Dev_AddReg]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{42809F3F-B9E5-4B16-B7E1-7B45C6A6E5E1}"
+
+[Strings]
+ManufacturerName = "Attack Shark Community"
+DeviceName       = "Attack Shark X11 / R1 WinUSB Device"
