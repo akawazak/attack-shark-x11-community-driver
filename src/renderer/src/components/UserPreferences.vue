@@ -7,7 +7,6 @@ import BaseInput from './BaseInput.vue';
 import BaseSelect from './BaseSelect.vue';
 import BaseSlider from './BaseSlider.vue';
 import Card from './Card.vue';
-import ColorPreview from './widgets/ColorPreview.vue';
 import StatusMessage from './StatusMessage.vue';
 import { useDebounce } from '../composables/useDebounce';
 
@@ -270,7 +269,11 @@ async function applyPreferences(showUi = true) {
 					</div>
 
 					<div class="flex items-center gap-4 mb-4">
-						<ColorPreview :r="rgb.r" :g="rgb.g" :b="rgb.b" />
+						<div class="relative w-10 h-10 rounded-full flex-shrink-0 transition-all duration-500"
+							:style="{ backgroundColor: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`, boxShadow: `0 0 20px rgb(${rgb.r}, ${rgb.g}, ${rgb.b})66, 0 0 40px rgb(${rgb.r}, ${rgb.g}, ${rgb.b})33` }">
+							<div class="absolute inset-1 rounded-full border"
+								:class="(rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114 < 128) ? 'border-white/20' : 'border-black/10'" />
+						</div>
 						<input
 							type="color"
 							:value="`#${rgb.r.toString(16).padStart(2, '0')}${rgb.g.toString(16).padStart(2, '0')}${rgb.b.toString(16).padStart(2, '0')}`"

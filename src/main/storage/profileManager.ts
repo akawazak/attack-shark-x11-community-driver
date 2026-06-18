@@ -10,13 +10,8 @@ export interface Profile {
 }
 
 export async function listProfiles(): Promise<string[]> {
-	try {
-		const data = await fs.readFile(STORAGE_PATH, 'utf-8');
-		const profiles: Profile[] = JSON.parse(data);
-		return profiles.map((p) => p.name);
-	} catch {
-		return [];
-	}
+	const profiles = await getAllProfiles();
+	return profiles.map((p) => p.name);
 }
 
 export async function saveProfile(name: string, data: unknown): Promise<void> {

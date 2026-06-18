@@ -37,5 +37,5 @@ export type {
 	DeviceModel,
 } from './types.js';
 export { delay } from './utils/delay.js';
-export { ConsoleLogger, logger } from './logger/index.js';
+export { logger } from './logger/index.js';
 export { DriverError, ParamsError, DeviceError, InterfaceError, TimeoutError } from './errors.js';

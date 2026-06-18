@@ -21,7 +21,7 @@ import {
 	type Logger,
 } from '../types.js';
 import { delay } from '../utils/delay.js';
-import { ConsoleLogger } from '../logger/index.js';
+import { logger as defaultLogger } from '../logger/index.js';
 import { BatteryMonitor } from './BatteryMonitor.js';
 
 type USBRequestType = 'standard' | 'class' | 'vendor';
@@ -111,7 +111,7 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 			throw new DriverError('The type of connection was not specified');
 		}
 
-		this.logger = options.logger ?? new ConsoleLogger();
+		this.logger = options.logger ?? defaultLogger;
 		this.delayMs = options.delayMs ?? 250;
 		this.productId = options.connectionMode;
 	}

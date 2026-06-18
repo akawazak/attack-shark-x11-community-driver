@@ -5,7 +5,6 @@ import { AttackSharkX11 } from './driver/index.js';
 import { AttackSharkR1 } from './driver/core/AttackSharkR1.js';
 import { ConnectionMode, type DeviceModel } from './driver/types.js';
 import { validateDpiConfig } from './utils/validation.js';
-import { sanitizePreferences } from './utils/preferenceSanitizer.js';
 import * as profileManager from './storage/profileManager.js';
 import * as settingsManager from './storage/settingsManager.js';
 
@@ -145,7 +144,12 @@ app.whenReady().then(() => {
 
 	ipcMain.handle('set-user-preferences', (_, prefs: UserPreferencesBuilderOptions) => {
 		if (!driver) throw new Error('Device not connected');
-		return driver.setUserPreferences(sanitizePreferences(prefs));
+		const s = { ...prefs };
+		if (typeof s.ledSpeed !== 'number' || s.ledSpeed < 1 || s.ledSpeed > 5) s.ledSpeed = 3;
+		if (typeof s.deepSleepTime !== 'number' || s.deepSleepTime < 1 || s.deepSleepTime > 60) s.deepSleepTime = 10;
+		if (typeof s.keyResponse !== 'number' || s.keyResponse < 4 || s.keyResponse > 50 || s.keyResponse % 2 !== 0)
+			s.keyResponse = 8;
+		return driver.setUserPreferences(s);
 	});
 
 	ipcMain.handle('get-dpi', () => {

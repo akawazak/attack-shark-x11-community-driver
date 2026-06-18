@@ -5,9 +5,6 @@ export class DriverError extends Error {
 	}
 }
 
-/**
- * An error is thrown when the provided parameters are invalid or missing
- */
 export class ParamsError extends DriverError {
 	constructor(
 		public paramName: string,
@@ -18,14 +15,8 @@ export class ParamsError extends DriverError {
 	}
 }
 
-/**
- * Generic error related to the USB device
- */
 export class DeviceError extends DriverError {}
 
-/**
- * This error is thrown when there is a failure to access or claim a USB interface
- */
 export class InterfaceError extends DriverError {
 	constructor(
 		message: string,
@@ -36,7 +27,4 @@ export class InterfaceError extends DriverError {
 	}
 }
 
-/**
- * An error is thrown when an operation exceeds the expected timeout
- */
 export class TimeoutError extends DriverError {}

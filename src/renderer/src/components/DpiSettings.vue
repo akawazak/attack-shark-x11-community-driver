@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { Zap, Target, Sliders } from 'lucide-vue-next';
 import BaseInput from './BaseInput.vue';
 import BaseSlider from './BaseSlider.vue';
-import BaseToggle from './base/BaseToggle.vue';
+import BaseToggle from './BaseToggle.vue';
 import Card from './Card.vue';
 import StatusMessage from './StatusMessage.vue';
 import { useDebounce } from '../composables/useDebounce';
