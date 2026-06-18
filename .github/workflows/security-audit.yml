@@ -27,10 +27,10 @@ jobs:
           path: |
             ~/.bun/install/cache
             node_modules
-          key: bun-${{ hashFiles('bun.lockb') }}
+          key: bun-${{ hashFiles('bun.lock') }}
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Run security audit
         run: bun audit
