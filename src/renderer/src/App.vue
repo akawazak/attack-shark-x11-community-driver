@@ -19,7 +19,7 @@ import packageInfo from '../../../package.json';
 const version = packageInfo.version;
 const isConnected = ref(false);
 const connectionMode = ref<'Adapter' | 'Wired' | null>(null);
-const deviceModel = ref<'X11' | 'R1'>('X11');
+const deviceModel = ref<'X11' | 'X11SE' | 'R1'>('X11');
 const capabilities = ref<Record<string, boolean>>({});
 const batteryLevel = ref(-1);
 const sidebarCollapsed = ref(false);
@@ -121,7 +121,7 @@ const finalizeConnection = async (mode: number) => {
 	const caps = await window.api.getDeviceCapabilities();
 	capabilities.value = caps;
 	const model = await window.api.getDeviceModel();
-	deviceModel.value = model as 'X11' | 'R1';
+	deviceModel.value = model as 'X11' | 'X11SE' | 'R1';
 	await updateBattery();
 	await fetchSummary();
 	await updateProfiles();

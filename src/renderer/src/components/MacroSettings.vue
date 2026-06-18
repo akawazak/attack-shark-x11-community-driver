@@ -11,7 +11,7 @@ import CustomMacroEditor from './CustomMacroEditor.vue';
 
 const props = defineProps<{
 	isConnected: boolean;
-	deviceModel?: 'X11' | 'R1';
+	deviceModel?: 'X11' | 'X11SE' | 'R1';
 }>();
 
 const { t } = useI18n();

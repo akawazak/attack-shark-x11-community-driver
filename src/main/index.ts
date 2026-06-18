@@ -336,7 +336,7 @@ app.whenReady().then(() => {
 	ipcMain.handle('detect-device', async () => {
 		try {
 			const knownPIDs: Array<{ mode: number; model: DeviceModel }> = [
-				{ mode: 0xfa60, model: 'X11' },
+				{ mode: 0xfa60, model: 'X11' }, // R1, X11SE also use this PID — detected as X11 (same protocol)
 				{ mode: 0xfa55, model: 'X11' },
 				{ mode: 0xfa61, model: 'R1' },
 			];

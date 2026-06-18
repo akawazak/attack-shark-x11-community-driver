@@ -13,7 +13,7 @@ const { t } = useI18n();
 
 const props = defineProps<{
 	isConnected: boolean;
-	deviceModel?: 'X11' | 'R1';
+	deviceModel?: 'X11' | 'X11SE' | 'R1';
 }>();
 
 const R1_DEFAULTS = [800, 1600, 3200, 4000, 5000, 12000] as [number, number, number, number, number, number];

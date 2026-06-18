@@ -35,7 +35,7 @@ const DEFAULT_PREFS: UserPreferences = {
 const props = defineProps<{
 	isConnected: boolean;
 	modelValue: UserPreferences;
-	deviceModel?: 'X11' | 'R1';
+	deviceModel?: 'X11' | 'X11SE' | 'R1';
 }>();
 
 const emit = defineEmits(['update:modelValue', 'resetComplete']);

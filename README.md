@@ -99,6 +99,7 @@ bun test            # 121+ tests
 | Attack Shark X11 | Bluetooth | ❓ Not tested |
 | Attack Shark R1 | Wired | ✅ Supported |
 | Attack Shark R1 | 2.4GHz wireless | ✅ Supported (via X11 compatibility) |
+| Attack Shark **X11SE** | All modes | ✅ Likely compatible (same chipset, untested) |
 
 ---
 

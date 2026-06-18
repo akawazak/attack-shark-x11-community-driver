@@ -8,7 +8,7 @@ const getSettingsPath = (): string => path.join(app.getPath('userData'), 'settin
 export interface AppSettings {
 	lastTab: string;
 	connectionMode: 'Adapter' | 'Wired';
-	deviceModel: 'X11' | 'R1';
+	deviceModel: 'X11' | 'X11SE' | 'R1';
 	language: string;
 	theme: string;
 	preferences: {

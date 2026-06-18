@@ -9,7 +9,7 @@ declare module '@vue/runtime-core' {
 interface AppSettings {
 	lastTab: string;
 	connectionMode: 'Adapter' | 'Wired';
-	deviceModel: 'X11' | 'R1';
+	deviceModel: 'X11' | 'X11SE' | 'R1';
 	language: string;
 	theme: string;
 	preferences: {
@@ -53,7 +53,7 @@ declare global {
 			saveSettings: (settings: AppSettings) => Promise<void>;
 			getSummary: () => Promise<unknown>;
 			getDeviceInfo: () => Promise<unknown>;
-			getDeviceModel: () => Promise<'X11' | 'R1'>;
+			getDeviceModel: () => Promise<'X11' | 'X11SE' | 'R1'>;
 			getDeviceCapabilities: () => Promise<Record<string, boolean>>;
 			onBatteryUpdated: (callback: (level: number) => void) => void;
 		};

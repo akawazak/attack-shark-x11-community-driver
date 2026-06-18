@@ -13,7 +13,7 @@ export enum ConnectionMode {
 /**
  * Device model identifier.
  */
-export type DeviceModel = 'X11' | 'R1';
+export type DeviceModel = 'X11' | 'X11SE' | 'R1';
 
 /**
  * Base structure for USB control transfer options.

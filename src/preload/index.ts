@@ -24,7 +24,7 @@ const api = {
 	saveSettings: (settings: AppSettings): Promise<void> => ipcRenderer.invoke('save-settings', settings),
 	getSummary: (): Promise<unknown> => ipcRenderer.invoke('get-summary'),
 	getDeviceInfo: (): Promise<unknown> => ipcRenderer.invoke('get-device-info'),
-	getDeviceModel: (): Promise<'X11' | 'R1'> => ipcRenderer.invoke('get-device-model'),
+	getDeviceModel: (): Promise<'X11' | 'X11SE' | 'R1'> => ipcRenderer.invoke('get-device-model'),
 	getDeviceCapabilities: (): Promise<Record<string, boolean>> => ipcRenderer.invoke('get-device-capabilities'),
 	onBatteryUpdated: (callback: (level: number) => void): void => {
 		ipcRenderer.on('battery-updated', (_event, value) => callback(value));
