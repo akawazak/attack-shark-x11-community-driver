@@ -87,6 +87,7 @@ Desktop.ini
 # Project specific
 /tmp
 /reverse-eng
+/_usb_build/
 parse.ts
 tests.ts
 scratch.txt

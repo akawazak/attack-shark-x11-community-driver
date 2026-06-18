@@ -4,18 +4,31 @@
 	"description": "A TypeScript driver for the Attack Shark X11 gaming mouse, supporting Linux and other platforms via Node.js/Bun and USB HID.",
 	"desktopName": "attack-shark-x11-electron",
 	"author": {
-		"name": "dressedinblack5",
-		"email": "leonvargas4991@gmail.com",
-		"url": ""
+		"name": "akawazak",
+		"url": "https://github.com/akawazak"
 	},
+	"contributors": [
+		{
+			"name": "dressedinblack5",
+			"url": "https://github.com/dressedinblack5"
+		},
+		{
+			"name": "HarukaYamamoto0",
+			"url": "https://github.com/HarukaYamamoto0"
+		},
+		{
+			"name": "xb-bx",
+			"url": "https://github.com/xb-bx"
+		}
+	],
 	"license": "MIT",
-	"homepage": "https://github.com/dressedinblack5/attack-shark-x11-electron#readme",
+	"homepage": "https://github.com/akawazak/attack-shark-x11-community-driver#readme",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/dressedinblack5/attack-shark-x11-electron.git"
+		"url": "git+https://github.com/akawazak/attack-shark-x11-community-driver.git"
 	},
 	"bugs": {
-		"url": "https://github.com/dressedinblack5/attack-shark-x11-electron/issues"
+		"url": "https://github.com/akawazak/attack-shark-x11-community-driver/issues"
 	},
 	"keywords": [
 		"attack-shark",
@@ -49,6 +62,13 @@
 		"directories": {
 			"output": "dist"
 		},
+		"publish": [
+			{
+				"provider": "github",
+				"owner": "akawazak",
+				"repo": "attack-shark-x11-community-driver"
+			}
+		],
 		"files": [
 			"out/**/*",
 			"package.json"
@@ -61,6 +81,34 @@
 			"category": "Settings",
 			"icon": "assets/cs-mouse.svg",
 			"syncDesktopName": true
+		},
+		"win": {
+			"target": [
+				{
+					"target": "nsis",
+					"arch": [
+						"x64"
+					]
+				},
+				{
+					"target": "portable",
+					"arch": [
+						"x64"
+					]
+				}
+			],
+			"icon": "assets/shark-x11-electron.png"
+		},
+		"nsis": {
+			"artifactName": "attack-shark-x11-electron-${version}-setup.${ext}",
+			"oneClick": false,
+			"allowToChangeInstallationDirectory": true,
+			"createDesktopShortcut": true,
+			"createStartMenuShortcut": true,
+			"shortcutName": "Attack Shark X11 Driver"
+		},
+		"portable": {
+			"artifactName": "attack-shark-x11-electron-${version}-portable.${ext}"
 		}
 	},
 	"lint-staged": {
@@ -71,6 +119,7 @@
 	},
 	"dependencies": {
 		"@electron-toolkit/utils": "^4.0.0",
+		"electron-updater": "^6.8.9",
 		"lucide-vue-next": "^1.0.0",
 		"usb": "github:dressedinblack5/node-usb-rs",
 		"vue": "^3.5.38",

@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
+import electronUpdater, { type AppUpdater } from 'electron-updater';
 import { AttackSharkX11 } from './driver/index.js';
 import { AttackSharkR1 } from './driver/core/AttackSharkR1.js';
 import { ConnectionMode, type DeviceModel } from './driver/types.js';
@@ -16,7 +17,27 @@ import { usb } from 'usb';
 
 let driver: AttackSharkX11 | AttackSharkR1 | null = null;
 let deviceModel: DeviceModel = 'X11';
-// ... (in app.whenReady())
+
+function getAutoUpdater(): AppUpdater {
+	const { autoUpdater } = electronUpdater;
+	return autoUpdater;
+}
+
+function setupAutoUpdates(): void {
+	if (is.dev) return;
+
+	const autoUpdater = getAutoUpdater();
+	autoUpdater.autoDownload = true;
+	autoUpdater.autoInstallOnAppQuit = true;
+
+	autoUpdater.on('error', (error) => {
+		console.error('Auto-update failed:', error);
+	});
+
+	autoUpdater.checkForUpdatesAndNotify().catch((error: unknown) => {
+		console.error('Auto-update check failed:', error);
+	});
+}
 
 function createWindow(): void {
 	// Create the browser window.
@@ -361,6 +382,7 @@ app.whenReady().then(() => {
 	ipcMain.handle('save-settings', (_, settings) => settingsManager.saveSettings(settings));
 
 	createWindow();
+	setupAutoUpdates();
 
 	app.on('activate', function () {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();

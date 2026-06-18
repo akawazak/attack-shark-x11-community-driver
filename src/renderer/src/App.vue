@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive, watch, toRaw } from 'vue';
+import { ref, computed, onMounted, onUnmounted, reactive, watch, toRaw } from 'vue';
 import { Settings, Zap, Info, ShieldAlert, Keyboard, MousePointer2, Menu, LayoutDashboard } from 'lucide-vue-next';
 
 import UserPreferences from './components/UserPreferences.vue';
@@ -57,6 +57,23 @@ const profiles = ref<string[]>([]);
 const connectionError = ref('');
 const activeTab = ref('preferences');
 const lastMode = ref(0xfa60);
+const batteryPollInterval = ref<ReturnType<typeof setInterval> | null>(null);
+
+const BATTERY_POLL_MS = 30_000; // Poll every 30 s as fallback
+
+const startBatteryPolling = () => {
+	if (batteryPollInterval.value) clearInterval(batteryPollInterval.value);
+	batteryPollInterval.value = setInterval(async () => {
+		if (isConnected.value) await updateBattery();
+	}, BATTERY_POLL_MS);
+};
+
+const stopBatteryPolling = () => {
+	if (batteryPollInterval.value) {
+		clearInterval(batteryPollInterval.value);
+		batteryPollInterval.value = null;
+	}
+};
 
 const isPermissionError = computed(() => {
 	const msg = connectionError.value.toLowerCase();
@@ -125,6 +142,7 @@ const finalizeConnection = async (mode: number) => {
 	await updateBattery();
 	await fetchSummary();
 	await updateProfiles();
+	startBatteryPolling();
 };
 
 const retryConnection = async () => {
@@ -153,6 +171,10 @@ const updateBattery = async () => {
 		batteryLevel.value = -1;
 	}
 };
+
+onUnmounted(() => {
+	stopBatteryPolling();
+});
 
 onMounted(async () => {
 	try {

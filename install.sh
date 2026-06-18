@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-GITHUB_REPO="dressedinblack5/attack-shark-x11-electron"
+GITHUB_REPO="akawazak/attack-shark-x11-community-driver"
 APP_NAME="attack-shark-x11-electron"
 UDEV_RULES="/etc/udev/rules.d/99-${APP_NAME}.rules"
 
