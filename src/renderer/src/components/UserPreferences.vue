@@ -269,10 +269,21 @@ async function applyPreferences(showUi = true) {
 					</div>
 
 					<div class="flex items-center gap-4 mb-4">
-						<div class="relative w-10 h-10 rounded-full flex-shrink-0 transition-all duration-500"
-							:style="{ backgroundColor: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`, boxShadow: `0 0 20px rgb(${rgb.r}, ${rgb.g}, ${rgb.b})66, 0 0 40px rgb(${rgb.r}, ${rgb.g}, ${rgb.b})33` }">
-							<div class="absolute inset-1 rounded-full border"
-								:class="(rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114 < 128) ? 'border-white/20' : 'border-black/10'" />
+						<div
+							class="relative w-10 h-10 rounded-full flex-shrink-0 transition-all duration-500"
+							:style="{
+								backgroundColor: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`,
+								boxShadow: `0 0 20px rgb(${rgb.r}, ${rgb.g}, ${rgb.b})66, 0 0 40px rgb(${rgb.r}, ${rgb.g}, ${rgb.b})33`,
+							}"
+						>
+							<div
+								class="absolute inset-1 rounded-full border"
+								:class="
+									rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114 < 128
+										? 'border-white/20'
+										: 'border-black/10'
+								"
+							/>
 						</div>
 						<input
 							type="color"
