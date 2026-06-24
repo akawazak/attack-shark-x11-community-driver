@@ -5,12 +5,13 @@ const props = withDefaults(
 	defineProps<{
 		level: number;
 		connected: boolean;
+		mode?: 'Adapter' | 'Wired' | null;
 	}>(),
-	{ level: -1, connected: false },
+	{ level: -1, connected: false, mode: null },
 );
 
 const percent = computed(() => Math.max(0, Math.min(100, props.level)));
-const isPlugged = computed(() => props.level < 0 && props.connected);
+const isWired = computed(() => props.connected && props.mode === 'Wired');
 
 const batteryColor = computed(() => {
 	if (percent.value <= 20) return 'bg-red-500';
@@ -42,7 +43,7 @@ const glowColor = computed(() => {
 			</div>
 			<span class="text-sm font-medium tabular-nums text-[var(--sidebar-text-footer)]">{{ level }}%</span>
 		</template>
-		<template v-else-if="connected">
+		<template v-else-if="connected && isWired">
 			<!-- Wired mode icon -->
 			<svg
 				class="w-4 h-4 text-[var(--sidebar-text)]"
@@ -58,6 +59,12 @@ const glowColor = computed(() => {
 				<path d="M9 5v2h6V5" />
 			</svg>
 			<span class="text-sm font-medium text-[var(--sidebar-text-footer)]">Wired</span>
+		</template>
+		<template v-else-if="connected">
+			<div class="w-10 h-5 border-2 border-[var(--sidebar-border)] rounded-md p-[2px] opacity-60">
+				<div class="h-full w-1/2 rounded-sm bg-[var(--sidebar-text-muted)]/40" />
+			</div>
+			<span class="text-xs text-[var(--sidebar-text-muted)]">Battery unavailable</span>
 		</template>
 		<template v-else>
 			<!-- Disconnected -->

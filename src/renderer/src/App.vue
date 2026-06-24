@@ -58,7 +58,7 @@ const connectionError = ref('');
 const activeTab = ref('preferences');
 const lastMode = ref(0xfa60);
 const batteryPollInterval = ref<ReturnType<typeof setInterval> | null>(null);
-const isInstallingDriver = ref(false);
+const isConnecting = ref(false);
 const isWindows = ref(false);
 
 const BATTERY_POLL_MS = 30_000; // Poll every 30 s as fallback
@@ -87,7 +87,7 @@ const isDeviceMissing = computed(() => {
 	return msg.includes('not found') || msg.includes('no such device') || msg.includes('libusb_error');
 });
 
-const needsWindowsDriverInstall = computed(() => {
+const windowsConnectionHint = computed(() => {
 	if (!isWindows.value || !connectionError.value) return false;
 	const msg = connectionError.value.toLowerCase();
 	return (
@@ -99,37 +99,15 @@ const needsWindowsDriverInstall = computed(() => {
 	);
 });
 
-const installDriver = async () => {
-	if (!window.api?.installUsbDriver) return;
-	isInstallingDriver.value = true;
-	try {
-		const result = await window.api.installUsbDriver();
-		if (result.success) {
-			if (result.alreadyInstalled) {
-				connectionError.value = 'Driver is already installed. Try replugging the mouse and clicking Retry.';
-			} else {
-				connectionError.value = '';
-				await retryConnection();
-				return;
-			}
-		} else {
-			connectionError.value = `Driver install failed: ${result.error ?? 'unknown error'}`;
-		}
-	} catch (err: unknown) {
-		const error = err instanceof Error ? err : new Error(String(err));
-		connectionError.value = `Driver install failed: ${error.message}`;
-	} finally {
-		isInstallingDriver.value = false;
-	}
-};
-
 const updateProfiles = async () => {
 	profiles.value = await window.api.listProfiles();
 };
 
 const connect = async (mode: number) => {
+	if (isConnecting.value) return;
 	lastMode.value = mode;
 	connectionError.value = '';
+	isConnecting.value = true;
 	try {
 		if (!window.api) throw new Error('IPC API not found.');
 		// Auto-detect model: wireless PID is shared, so we don't know model yet
@@ -143,12 +121,16 @@ const connect = async (mode: number) => {
 		const error = err instanceof Error ? err : new Error(String(err));
 		console.error('IPC Error:', error);
 		connectionError.value = `Connection Error: ${error.message}`;
+	} finally {
+		isConnecting.value = false;
 	}
 };
 
 const connectWired = async () => {
+	if (isConnecting.value) return;
 	lastMode.value = 0xfa55; // Try X11 wired first
 	connectionError.value = '';
+	isConnecting.value = true;
 	try {
 		if (!window.api) throw new Error('IPC API not found.');
 		// Try X11 wired first
@@ -169,15 +151,14 @@ const connectWired = async () => {
 		const error = err instanceof Error ? err : new Error(String(err));
 		console.error('IPC Error:', error);
 		connectionError.value = `Connection Error: ${error.message}`;
+	} finally {
+		isConnecting.value = false;
 	}
 };
 
 const finalizeConnection = async (mode: number) => {
 	isConnected.value = true;
 	connectionMode.value = mode === 0xfa55 || mode === 0xfa61 ? 'Wired' : 'Adapter';
-	if (connectionMode.value === 'Wired' && activeTab.value === 'preferences') {
-		activeTab.value = 'dpi';
-	}
 	const caps = await window.api.getDeviceCapabilities();
 	capabilities.value = caps;
 	const model = await window.api.getDeviceModel();
@@ -337,7 +318,6 @@ watch(
 					<span v-if="!sidebarCollapsed">Overview</span>
 				</button>
 				<button
-					v-if="!(connectionMode === 'Wired' && isConnected)"
 					@click="activeTab = 'preferences'"
 					:class="[
 						'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
@@ -405,7 +385,7 @@ watch(
 					<ThemeToggle />
 				</div>
 				<div v-if="isConnected">
-					<BatteryIndicator :level="batteryLevel" :connected="isConnected" />
+					<BatteryIndicator :level="batteryLevel" :connected="isConnected" :mode="connectionMode" />
 				</div>
 				<div v-else class="text-xs text-[var(--sidebar-text-muted)] italic">
 					{{ $t('connection.disconnected') }}
@@ -438,14 +418,15 @@ watch(
 				<div class="grid grid-cols-2 gap-4 w-full max-w-sm">
 					<button
 						@click="connect(0xfa60)"
-						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-5 rounded-xl border border-[var(--connection-card-border)] transition-all group flex flex-col items-center"
+						:disabled="isConnecting"
+						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] disabled:opacity-60 disabled:cursor-wait p-5 rounded-xl border border-[var(--connection-card-border)] transition-all group flex flex-col items-center"
 						aria-label="Connect via 2.4GHz wireless adapter"
 					>
 						<Zap
 							class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary transition-colors"
 						/>
 						<span class="block font-semibold text-[var(--text-primary)]">{{
-							$t('connection.adapter')
+							isConnecting && lastMode === 0xfa60 ? $t('connection.connecting') : $t('connection.adapter')
 						}}</span>
 						<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
 							$t('connection.adapterDesc')
@@ -453,13 +434,16 @@ watch(
 					</button>
 					<button
 						@click="connectWired"
-						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] p-5 rounded-xl border border-[var(--connection-card-border)] transition-all group flex flex-col items-center"
+						:disabled="isConnecting"
+						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] disabled:opacity-60 disabled:cursor-wait p-5 rounded-xl border border-[var(--connection-card-border)] transition-all group flex flex-col items-center"
 						aria-label="Connect via USB cable"
 					>
 						<ShieldAlert
 							class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary transition-colors"
 						/>
-						<span class="block font-semibold text-[var(--text-primary)]">{{ $t('connection.wired') }}</span>
+						<span class="block font-semibold text-[var(--text-primary)]">{{
+							isConnecting && lastMode !== 0xfa60 ? $t('connection.connecting') : $t('connection.wired')
+						}}</span>
 						<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
 							$t('connection.wiredDesc')
 						}}</span>
@@ -476,25 +460,16 @@ watch(
 						{{ $t('connection.udevTip') }}
 					</div>
 					<div
-						v-if="needsWindowsDriverInstall"
+						v-if="windowsConnectionHint"
 						class="text-xs text-[var(--text-muted)] bg-[var(--bg-elevated)] p-3 rounded-lg"
 					>
 						{{ $t('connection.driverTip') }}
 					</div>
 					<BaseButton
-						v-if="needsWindowsDriverInstall"
-						@click="installDriver"
-						variant="minimal"
-						class="w-full"
-						:disabled="isInstallingDriver"
-						aria-label="Install WinUSB driver for Attack Shark X11"
-					>
-						{{ isInstallingDriver ? $t('connection.installingDriver') : $t('connection.installDriver') }}
-					</BaseButton>
-					<BaseButton
 						@click="retryConnection"
 						variant="green"
 						class="w-full"
+						:disabled="isConnecting"
 						:aria-label="
 							'Retry connection in ' + (connectionMode === 'Wired' ? 'wired' : 'wireless') + ' mode'
 						"
@@ -564,7 +539,7 @@ watch(
 					</div>
 
 					<!-- Preferences Content -->
-					<div v-if="activeTab === 'preferences' && !(connectionMode === 'Wired' && isConnected)">
+					<div v-if="activeTab === 'preferences'">
 						<UserPreferences
 							v-model="preferences"
 							:isConnected="isConnected"

@@ -106,6 +106,7 @@ app.whenReady().then(() => {
 			const oldDriver = driver;
 			if (oldDriver) {
 				await oldDriver.close();
+				driver = null;
 			}
 
 			let newDriver: AttackSharkX11 | AttackSharkR1;
@@ -127,6 +128,7 @@ app.whenReady().then(() => {
 			deviceModel = model;
 			return { success: true };
 		} catch (error: unknown) {
+			driver = null;
 			const err = error instanceof Error ? error : new Error(String(error));
 			console.error('Connection failed:', err);
 			return { success: false, error: err.message };
