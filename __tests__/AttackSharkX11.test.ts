@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'bun:test';
 
 interface MockDevice {
 	vendorId: number;
@@ -65,7 +65,13 @@ vi.mock('usb', () => ({
 	},
 }));
 
+vi.mock('node-hid', () => ({
+	devices: vi.fn(() => []),
+	HID: vi.fn(),
+}));
+
 const { AttackSharkX11, ConnectionMode, DriverError, DeviceError } = await import('../src/main/driver/index.js');
+const originalPlatform = process.platform;
 
 function createDriver(mode: ConnectionMode = ConnectionMode.Adapter, delayMs = 0): InstanceType<typeof AttackSharkX11> {
 	return new AttackSharkX11({ connectionMode: mode, delayMs });
@@ -74,6 +80,10 @@ function createDriver(mode: ConnectionMode = ConnectionMode.Adapter, delayMs = 0
 describe('AttackSharkX11', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	afterEach(() => {
+		Object.defineProperty(process, 'platform', { value: originalPlatform });
 	});
 
 	describe('constructor', () => {
@@ -118,39 +128,30 @@ describe('AttackSharkX11', () => {
 		});
 
 		it('should detach kernel driver on Linux when active', async () => {
-			const originalPlatform = process.platform;
 			Object.defineProperty(process, 'platform', { value: 'linux' });
 
 			const driver = createDriver();
 			await driver.open();
 
 			expect(mockAdapterDevice.detachKernelDriver).toHaveBeenCalledWith(2);
-
-			Object.defineProperty(process, 'platform', { value: originalPlatform });
 		});
 
 		it('should not call detachKernelDriver on non-Linux', async () => {
-			const originalPlatform = process.platform;
 			Object.defineProperty(process, 'platform', { value: 'darwin' });
 
 			const driver = createDriver();
 			await driver.open();
 
 			expect(mockAdapterDevice.detachKernelDriver).not.toHaveBeenCalled();
-
-			Object.defineProperty(process, 'platform', { value: originalPlatform });
 		});
 
 		it('should not throw if detachKernelDriver fails on Linux', async () => {
-			const originalPlatform = process.platform;
 			Object.defineProperty(process, 'platform', { value: 'linux' });
 
 			mockAdapterDevice.detachKernelDriver.mockRejectedValueOnce(new Error('No kernel driver'));
 			const driver = createDriver();
 
 			await expect(driver.open()).resolves.toBeUndefined();
-
-			Object.defineProperty(process, 'platform', { value: originalPlatform });
 		});
 
 		it('should start battery monitor polling on open', async () => {

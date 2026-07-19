@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.2] - 2026-07-20
+
+### Fixed
+- Serialize mouse configuration writes, preventing overlapping saves while leaving reads and app navigation unrestricted.
+- Stabilize battery reporting by rejecting invalid reports and confirming abrupt jumps before displaying them.
+- Wait long enough for the initial wireless battery report instead of falsely showing it as unavailable.
+- Make Bun installs reproducible by locking the already-declared Windows HID and updater dependencies.
+
 ## [1.2.8] - 2026-06-13
 
 ### Added

@@ -16,9 +16,11 @@ const X11_BATTERY_CONFIG: Required<Pick<BatteryMonitorConfig, 'headerPrefix' | '
 	headerPrefix: Buffer.from([0x03, 0x55, 0x40, 0x01]),
 	extractValue: (data: Buffer): number => data[4] ?? 0,
 };
+const MAX_SINGLE_REPORT_CHANGE = 5;
 
 export class BatteryMonitor extends EventEmitter<BatteryMonitorEvents> {
 	private lastBattery: number = -1;
+	private pendingBattery: number = -1;
 	private device: { nativeTransferIn(endpoint: number, timeout: number, length: number): Promise<Uint8Array | null> };
 	private interruptEndpoint: number;
 	private connectionMode: () => ConnectionMode;
@@ -103,10 +105,19 @@ export class BatteryMonitor extends EventEmitter<BatteryMonitorEvents> {
 			if (data.length < 5) return;
 
 			const battery = this.extractValue(data);
-			if (battery !== undefined && battery !== this.lastBattery) {
-				this.lastBattery = battery;
-				this.emit('batteryChange', battery);
+			if (battery === undefined || battery < 0 || battery > 100 || battery === this.lastBattery) {
+				this.pendingBattery = -1;
+				return;
 			}
+			if (this.lastBattery !== -1 && Math.abs(battery - this.lastBattery) > MAX_SINGLE_REPORT_CHANGE) {
+				if (battery !== this.pendingBattery) {
+					this.pendingBattery = battery;
+					return;
+				}
+			}
+			this.pendingBattery = -1;
+			this.lastBattery = battery;
+			this.emit('batteryChange', battery);
 		});
 	}
 

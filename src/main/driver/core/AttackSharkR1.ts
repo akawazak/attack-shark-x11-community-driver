@@ -18,7 +18,7 @@ import {
 	type ControlTransferOut,
 	type Logger,
 } from '../types.js';
-import { delay } from '../utils/delay.js';
+import { WriteQueue } from '../utils/writeQueue.js';
 import { logger as defaultLogger } from '../logger/index.js';
 import { BatteryMonitor } from './BatteryMonitor.js';
 
@@ -101,6 +101,7 @@ export class AttackSharkR1 extends EventEmitter<AttackSharkR1Events> {
 	private lastBattery: number = -1;
 	private logger: Logger;
 	private batteryMonitor: BatteryMonitor | null = null;
+	private memoryWriteQueue = new WriteQueue();
 	private cachedUserPreferences: R1UserPreferencesBuilderOptions | null = null;
 
 	constructor(options: { connectionMode: ConnectionMode; logger?: Logger; delayMs?: number }) {
@@ -272,23 +273,17 @@ export class AttackSharkR1 extends EventEmitter<AttackSharkR1Events> {
 			index: options.wIndex,
 		};
 
-		let result: number | Buffer;
-
 		if (isIn) {
 			const length = typeof options.data === 'number' ? options.data : 0;
 			const data = await this.device.nativeControlTransferIn(setup, CONTROL_TRANSFER_TIMEOUT, length);
-			result = data ? Buffer.from(data) : Buffer.alloc(0);
-		} else {
-			const data = options.data instanceof Buffer ? new Uint8Array(options.data) : undefined;
-			const bytesWritten = await this.device.nativeControlTransferOut(setup, CONTROL_TRANSFER_TIMEOUT, data);
-			result = bytesWritten;
+			return data ? Buffer.from(data) : Buffer.alloc(0);
 		}
 
-		if (Buffer.isBuffer(options.data)) {
-			await delay(this.delayMs);
-		}
-
-		return result;
+		const data = options.data instanceof Buffer ? new Uint8Array(options.data) : undefined;
+		return this.memoryWriteQueue.run(
+			() => this.device.nativeControlTransferOut(setup, CONTROL_TRANSFER_TIMEOUT, data),
+			this.delayMs,
+		);
 	}
 
 	private sendBuilder(builder: {
@@ -307,7 +302,7 @@ export class AttackSharkR1 extends EventEmitter<AttackSharkR1Events> {
 		} as ControlTransferOut) as Promise<number>;
 	}
 
-	getBatteryLevel(timeoutMs = 1000): Promise<number> {
+	getBatteryLevel(timeoutMs = 2500): Promise<number> {
 		this.checkIsOpen();
 
 		if (this.connectionMode === ConnectionMode.R1Wired) {
