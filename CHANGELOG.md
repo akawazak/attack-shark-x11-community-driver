@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.4] - 2026-07-20
+
+### Changed
+- Exclude native-module compiler and debug artifacts from packaged apps while retaining the runtime binaries for every platform.
+- Reduce the Windows portable executable from about 131 MB to 91 MB, lowering its download and extraction payload.
+
 ## [1.4.3] - 2026-07-20
 
 ### Changed
