@@ -55,7 +55,7 @@ const createMockDevice = (productId: number): MockDevice => ({
 const mockAdapterDevice = createMockDevice(0xfa60);
 const mockWiredDevice = createMockDevice(0xfa55);
 
-vi.mock('usb', () => ({
+vi.mock('../src/main/driver/usb.js', () => ({
 	usb: {
 		findDeviceByIds: vi.fn((vid: number, pid: number): Promise<typeof mockAdapterDevice | null> => {
 			if (vid === 0x1d57 && pid === 0xfa60) return Promise.resolve(mockAdapterDevice);
@@ -63,11 +63,6 @@ vi.mock('usb', () => ({
 			return Promise.resolve(null);
 		}),
 	},
-}));
-
-vi.mock('node-hid', () => ({
-	devices: vi.fn(() => []),
-	HID: vi.fn(),
 }));
 
 const { AttackSharkX11, ConnectionMode, DriverError, DeviceError } = await import('../src/main/driver/index.js');
@@ -105,7 +100,7 @@ describe('AttackSharkX11', () => {
 		});
 
 		it('should throw DeviceError if no matching device is found', async () => {
-			const { usb: usbMock } = await import('usb');
+			const { usb: usbMock } = await import('../src/main/driver/usb.js');
 			(usbMock.findDeviceByIds as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
 			const driver = createDriver();
 

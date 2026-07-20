@@ -16,10 +16,7 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'drivers', 'attack-shark-x11-winusb.inf');
-const DEST_DIRS = [
-	path.join(ROOT, 'out', 'main', 'drivers'),
-	path.join(ROOT, 'out', 'drivers'),
-];
+const DEST_DIRS = [path.join(ROOT, 'out', 'main', 'drivers'), path.join(ROOT, 'out', 'drivers')];
 
 if (!fs.existsSync(SRC)) {
 	console.error(`[copy-driver-inf] Source INF not found: ${SRC}`);
