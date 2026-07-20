@@ -1,9 +1,8 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import electronUpdater, { type AppUpdater } from 'electron-updater';
-import { AttackSharkX11 } from './driver/index.js';
-import { AttackSharkR1 } from './driver/core/AttackSharkR1.js';
+import type { AttackSharkX11 } from './driver/core/AttackSharkX11.js';
+import type { AttackSharkR1 } from './driver/core/AttackSharkR1.js';
 import { ConnectionMode, type DeviceModel } from './driver/types.js';
 import { validateDpiConfig } from './utils/validation.js';
 import * as profileManager from './storage/profileManager.js';
@@ -14,20 +13,73 @@ import type { UserPreferencesBuilderOptions } from './driver/protocols/UserPrefe
 import type { MacroBuilderOptions } from './driver/protocols/MacrosBuilder.js';
 import type { MacroMode } from '../shared/macro-types.js';
 import { installUsbDriver } from './utils/driverInstaller.js';
-import { usb } from './driver/usb.js';
+import { WriteQueue } from './driver/utils/writeQueue.js';
 
-let driver: AttackSharkX11 | AttackSharkR1 | null = null;
+type ConnectedDriver = AttackSharkX11 | AttackSharkR1;
+
+let driver: ConnectedDriver | null = null;
 let deviceModel: DeviceModel = 'X11';
+const connectionQueue = new WriteQueue();
 
-function getAutoUpdater(): AppUpdater {
-	const { autoUpdater } = electronUpdater;
-	return autoUpdater;
+function getDriver(): ConnectedDriver | null {
+	return driver;
 }
 
-function setupAutoUpdates(): void {
+function setDriver(nextDriver: ConnectedDriver | null): void {
+	driver = nextDriver;
+}
+
+async function connectDevice(
+	params: number | { model: DeviceModel; mode: number },
+): Promise<{ success: boolean; error?: string }> {
+	try {
+		// Backward compat: old signature passes just a number
+		let model: DeviceModel = 'X11';
+		let mode: number;
+		if (typeof params === 'number') {
+			mode = params;
+		} else {
+			model = params.model;
+			mode = params.mode;
+		}
+
+		const oldDriver = getDriver();
+		if (oldDriver) {
+			await oldDriver.close();
+			setDriver(null);
+		}
+
+		let newDriver: ConnectedDriver;
+		if (model === 'R1') {
+			const { AttackSharkR1 } = await import('./driver/core/AttackSharkR1.js');
+			newDriver = new AttackSharkR1({ connectionMode: mode as ConnectionMode });
+		} else {
+			const { AttackSharkX11 } = await import('./driver/core/AttackSharkX11.js');
+			newDriver = new AttackSharkX11({ connectionMode: mode as ConnectionMode });
+		}
+
+		await newDriver.open();
+
+		newDriver.on('batteryChange', (level) => {
+			const windows = BrowserWindow.getAllWindows();
+			windows.forEach((w) => w.webContents.send('battery-updated', level));
+		});
+
+		setDriver(newDriver);
+		deviceModel = model;
+		return { success: true };
+	} catch (error: unknown) {
+		setDriver(null);
+		const err = error instanceof Error ? error : new Error(String(error));
+		console.error('Connection failed:', err);
+		return { success: false, error: err.message };
+	}
+}
+
+async function setupAutoUpdates(): Promise<void> {
 	if (is.dev) return;
 
-	const autoUpdater = getAutoUpdater();
+	const { autoUpdater } = await import('electron-updater');
 	autoUpdater.autoDownload = true;
 	autoUpdater.autoInstallOnAppQuit = true;
 
@@ -59,6 +111,7 @@ function createWindow(): void {
 
 	mainWindow.on('ready-to-show', () => {
 		mainWindow.show();
+		void setupAutoUpdates();
 		if (is.dev) {
 			mainWindow.webContents.openDevTools();
 		}
@@ -91,49 +144,9 @@ app.whenReady().then(() => {
 	});
 
 	// IPC Handlers
-	ipcMain.handle('connect-device', async (_, params: number | { model: DeviceModel; mode: number }) => {
-		try {
-			// Backward compat: old signature passes just a number
-			let model: DeviceModel = 'X11';
-			let mode: number;
-			if (typeof params === 'number') {
-				mode = params;
-			} else {
-				model = params.model;
-				mode = params.mode;
-			}
-
-			const oldDriver = driver;
-			if (oldDriver) {
-				await oldDriver.close();
-				driver = null;
-			}
-
-			let newDriver: AttackSharkX11 | AttackSharkR1;
-			if (model === 'R1') {
-				newDriver = new AttackSharkR1({ connectionMode: mode as ConnectionMode });
-			} else {
-				newDriver = new AttackSharkX11({ connectionMode: mode as ConnectionMode });
-			}
-
-			await newDriver.open();
-
-			newDriver.on('batteryChange', (level) => {
-				const windows = BrowserWindow.getAllWindows();
-				windows.forEach((w) => w.webContents.send('battery-updated', level));
-			});
-
-			// eslint-disable-next-line require-atomic-updates
-			driver = newDriver;
-			deviceModel = model;
-			return { success: true };
-		} catch (error: unknown) {
-			driver = null;
-			const err = error instanceof Error ? error : new Error(String(error));
-			console.error('Connection failed:', err);
-			return { success: false, error: err.message };
-		}
-	});
+	ipcMain.handle('connect-device', (_, params: number | { model: DeviceModel; mode: number }) =>
+		connectionQueue.run(() => connectDevice(params), 0),
+	);
 
 	ipcMain.handle('install-usb-driver', () => {
 		return installUsbDriver();
@@ -363,6 +376,7 @@ app.whenReady().then(() => {
 
 	ipcMain.handle('detect-device', async () => {
 		try {
+			const { usb } = await import('./driver/usb.js');
 			const knownPIDs: Array<{ mode: number; model: DeviceModel }> = [
 				{ mode: 0xfa60, model: 'X11' }, // R1, X11SE also use this PID — detected as X11 (same protocol)
 				{ mode: 0xfa55, model: 'X11' },
@@ -389,7 +403,6 @@ app.whenReady().then(() => {
 	ipcMain.handle('save-settings', (_, settings) => settingsManager.saveSettings(settings));
 
 	createWindow();
-	setupAutoUpdates();
 
 	app.on('activate', function () {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();

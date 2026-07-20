@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.3] - 2026-07-20
+
+### Changed
+- Defer USB/HID driver and updater loading until after the first window is ready, reducing cold-start work.
+- Serialize device connection attempts so concurrent requests cannot replace an in-progress driver.
+
 ## [1.4.2] - 2026-07-20
 
 ### Fixed
