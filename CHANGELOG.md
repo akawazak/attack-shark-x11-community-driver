@@ -3,6 +3,16 @@
 ## [1.4.5] - 2026-07-20
 
 ### Fixed
+- Make tab navigation immediate by removing renderer transitions and avoiding page rebuilds.
+- Stop synchronous Windows HID reads from freezing the entire app for up to two seconds at a time.
+- Keep settings pages mounted while browsing so tab changes do not rebuild the entire page.
+- Remove the sidebar selection animation so navigation text, icons, and highlighting update in the same frame.
+- Remove the global 200–300 ms renderer transitions and the unused debounce helper; only USB mouse-memory writes retain a cooldown.
+- Remove remaining component transition utilities, slider easing, toast motion, and delayed battery-bar animation.
+- Add a renderer responsiveness regression test that rejects timed transitions and UI debouncers.
+- Collapse rapid setting edits to the newest value so stale mouse-memory writes cannot accumulate behind the safety queue.
+- Keep the renderer responsive while the window is minimized or behind another app, avoiding delayed interaction after taskbar restore.
+- Remove UI-side apply timers from Preferences, DPI, and Macros; the 500 ms safety cooldown now exists only in the mouse-memory write queue.
 - Mock the application USB adapter in driver tests so coverage runs do not depend on native-module interop on the runner platform.
 - Align GitHub Actions with the tested Bun 1.3.14 runtime and current setup action.
 - Make the Windows HID compatibility adapter pass the repository's intended lint rules without changing its Promise-based API.

@@ -8,7 +8,7 @@ import BaseSelect from './BaseSelect.vue';
 import BaseSlider from './BaseSlider.vue';
 import Card from './Card.vue';
 import StatusMessage from './StatusMessage.vue';
-import { useDebounce } from '../composables/useDebounce';
+import { useLatestTask } from '../composables/useLatestTask';
 
 export interface UserPreferences {
 	lightMode: number;
@@ -42,6 +42,34 @@ const emit = defineEmits(['update:modelValue', 'resetComplete']);
 
 const form = reactive<UserPreferences>({ ...DEFAULT_PREFS, ...props.modelValue });
 
+const toDevicePreferences = (value: UserPreferences) => ({
+	lightMode: value.lightMode,
+	ledSpeed: value.ledSpeed,
+	keyResponse: value.keyResponse,
+	sleepTime: value.sleepTime,
+	deepSleepTime: value.deepSleepTime,
+	rgb: { ...value.rgb },
+});
+
+let lastDevicePreferences = JSON.stringify(toDevicePreferences(form));
+let lastPollingRate = form.pollingRate;
+
+const queueDevicePreferences = useLatestTask(async (preferences: ReturnType<typeof toDevicePreferences>) => {
+	try {
+		await window.api.setUserPreferences(preferences);
+	} catch (error: unknown) {
+		console.error('Auto-save preferences failed:', error);
+	}
+});
+
+const queuePollingRate = useLatestTask(async (pollingRate: number) => {
+	try {
+		await window.api.setPollingRate(pollingRate);
+	} catch (error: unknown) {
+		console.error('Auto-save polling rate failed:', error);
+	}
+});
+
 watch(
 	() => props.modelValue,
 	(newVal) => {
@@ -50,17 +78,22 @@ watch(
 	{ deep: true },
 );
 
-const debouncedApplyPreferences = useDebounce(async () => {
-	await applyPreferences(false);
-}, 300);
-
 // Watch form changes to sync with parent and auto-apply
 watch(
 	form,
 	(newVal) => {
 		emit('update:modelValue', { ...newVal });
 		if (props.isConnected) {
-			debouncedApplyPreferences();
+			const devicePreferences = toDevicePreferences(newVal);
+			const devicePreferencesKey = JSON.stringify(devicePreferences);
+			if (devicePreferencesKey !== lastDevicePreferences) {
+				lastDevicePreferences = devicePreferencesKey;
+				queueDevicePreferences(devicePreferences);
+			}
+			if (newVal.pollingRate !== lastPollingRate) {
+				lastPollingRate = newVal.pollingRate;
+				queuePollingRate(newVal.pollingRate);
+			}
 		}
 	},
 	{ deep: true },
@@ -88,7 +121,6 @@ const lightModes = computed(() => [
 const keyResponses = Array.from({ length: 24 }, (_, i) => 4 + i * 2);
 
 const statusMessage = ref('');
-const isSaving = ref(false);
 const statusType = computed(() => (statusMessage.value.includes('Error') ? 'error' : 'success'));
 const profiles = ref<string[]>([]);
 const newProfileName = ref('');
@@ -118,7 +150,6 @@ const applyProfile = async (name: string) => {
 	if (data) {
 		const prefs = data as UserPreferences;
 		Object.assign(form, prefs);
-		await applyPreferences();
 	}
 };
 
@@ -146,51 +177,6 @@ const resetDevice = async () => {
 		isResetting.value = false;
 	}
 };
-
-async function applyPreferences(showUi = true) {
-	if (!props.isConnected) return;
-
-	if (showUi) {
-		isSaving.value = true;
-		statusMessage.value = 'Applying settings...';
-	}
-
-	try {
-		const plainPrefs = {
-			lightMode: form.lightMode,
-			ledSpeed: form.ledSpeed,
-			keyResponse: form.keyResponse,
-			sleepTime: form.sleepTime,
-			deepSleepTime: form.deepSleepTime,
-			rgb: {
-				r: form.rgb.r,
-				g: form.rgb.g,
-				b: form.rgb.b,
-			},
-		};
-
-		await window.api.setUserPreferences(plainPrefs);
-		await window.api.setPollingRate(form.pollingRate);
-
-		if (showUi) {
-			statusMessage.value = 'Settings applied successfully!';
-			setTimeout(() => {
-				statusMessage.value = '';
-			}, 3000);
-		}
-	} catch (err: unknown) {
-		const error = err instanceof Error ? err : new Error(String(err));
-		if (showUi) {
-			statusMessage.value = `Error: ${error.message}`;
-		} else {
-			console.error('Auto-save failed:', error);
-		}
-	} finally {
-		if (showUi) {
-			isSaving.value = false;
-		}
-	}
-}
 </script>
 
 <template>
@@ -224,7 +210,7 @@ async function applyPreferences(showUi = true) {
 					<span>{{ profile }}</span>
 					<button
 						@click="applyProfile(profile)"
-						class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm transition-all"
+						class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm"
 					>
 						{{ $t('preferences.applyAction') }}
 					</button>
@@ -270,7 +256,7 @@ async function applyPreferences(showUi = true) {
 
 					<div class="flex items-center gap-4 mb-4">
 						<div
-							class="relative w-10 h-10 rounded-full flex-shrink-0 transition-all duration-500"
+							class="relative w-10 h-10 rounded-full flex-shrink-0"
 							:style="{
 								backgroundColor: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`,
 								boxShadow: `0 0 20px rgb(${rgb.r}, ${rgb.g}, ${rgb.b})66, 0 0 40px rgb(${rgb.r}, ${rgb.g}, ${rgb.b})33`,
@@ -297,7 +283,7 @@ async function applyPreferences(showUi = true) {
 									form.rgb.b = parseInt(hex.slice(5, 7), 16);
 								}
 							"
-							class="w-12 h-[46px] bg-[var(--bg-primary)] border border-[var(--border-card)] rounded-lg cursor-pointer p-1 transition-all"
+							class="w-12 h-[46px] bg-[var(--bg-primary)] border border-[var(--border-card)] rounded-lg cursor-pointer p-1"
 						/>
 					</div>
 					<div class="grid grid-cols-3 gap-2">

@@ -2,6 +2,22 @@ import { describe, expect, it } from 'bun:test';
 import { WriteQueue } from '../src/main/driver/utils/writeQueue.js';
 
 describe('WriteQueue', () => {
+	it('keeps the event loop responsive during its cooldown', async () => {
+		const queue = new WriteQueue();
+		let cooldownFinished = false;
+		const write = queue
+			.run(() => Promise.resolve(1), 50)
+			.then(() => {
+				cooldownFinished = true;
+			});
+
+		await new Promise<void>((resolve) => setTimeout(resolve, 0));
+		expect(cooldownFinished).toBe(false);
+
+		await write;
+		expect(cooldownFinished).toBe(true);
+	});
+
 	it('serializes writes and stays usable after a failed write', async () => {
 		const queue = new WriteQueue();
 		const events: string[] = [];

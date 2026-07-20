@@ -23,17 +23,11 @@ const props = withDefaults(
 			:aria-checked="model"
 			@click="model = !model"
 			:class="[
-				'relative w-12 h-6 rounded-full p-1 transition-colors duration-300 flex-shrink-0',
+				'relative w-12 h-6 rounded-full p-1 flex-shrink-0',
 				model ? 'bg-shark-primary' : 'bg-[var(--border-card)]',
 			]"
 		>
-			<div
-				:class="[
-					'w-4 h-4 bg-white rounded-full shadow-md transition-all duration-300',
-					model ? 'translate-x-6' : 'translate-x-0',
-				]"
-				style="transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1)"
-			/>
+			<div :class="['w-4 h-4 bg-white rounded-full shadow-md', model ? 'translate-x-6' : 'translate-x-0']" />
 		</button>
 	</div>
 </template>

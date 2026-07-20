@@ -3,11 +3,11 @@ import { ref, watch, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Keyboard } from 'lucide-vue-next';
 import { macroTemplates, MacroName, type MacroTuple } from '../../../shared/macro-templates.js';
-import { useDebounce } from '../composables/useDebounce';
 import BaseSelect from './BaseSelect.vue';
 import Card from './Card.vue';
 import StatusMessage from './StatusMessage.vue';
 import CustomMacroEditor from './CustomMacroEditor.vue';
+import { useLatestTask } from '../composables/useLatestTask';
 
 const props = defineProps<{
 	isConnected: boolean;
@@ -39,7 +39,7 @@ const selectedButton = ref(3);
 
 const activeTab = ref<'templates' | 'custom'>('templates');
 
-const applyMacro = async () => {
+const applyMacro = async (template: MacroName, button: number) => {
 	if (!props.isConnected) return;
 	isSaving.value = true;
 	statusMessage.value = t('macros.applying');
@@ -56,8 +56,8 @@ const applyMacro = async () => {
 			5: 'dpi',
 		};
 
-		const buttonKey = buttonMap[selectedButton.value];
-		macroConfig[buttonKey] = macroTemplates[selectedTemplate.value];
+		const buttonKey = buttonMap[button];
+		macroConfig[buttonKey] = macroTemplates[template];
 
 		await window.api.setMacro(macroConfig);
 		statusMessage.value = t('macros.macroAssigned');
@@ -70,9 +70,11 @@ const applyMacro = async () => {
 	}
 };
 
-const debouncedApplyMacro = useDebounce(applyMacro, 300);
+const queueMacro = useLatestTask(async ({ template, button }: { template: MacroName; button: number }) => {
+	await applyMacro(template, button);
+});
 
-watch([selectedTemplate, selectedButton], () => debouncedApplyMacro());
+watch([selectedTemplate, selectedButton], ([template, button]) => queueMacro({ template, button }));
 </script>
 
 <template>
@@ -92,7 +94,7 @@ watch([selectedTemplate, selectedButton], () => debouncedApplyMacro());
 			<button
 				@click="activeTab = 'templates'"
 				:class="[
-					'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all',
+					'flex-1 py-2 px-4 rounded-md text-sm font-medium',
 					activeTab === 'templates'
 						? 'bg-shark-primary text-white shadow-sm'
 						: 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
@@ -103,7 +105,7 @@ watch([selectedTemplate, selectedButton], () => debouncedApplyMacro());
 			<button
 				@click="activeTab = 'custom'"
 				:class="[
-					'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all',
+					'flex-1 py-2 px-4 rounded-md text-sm font-medium',
 					activeTab === 'custom'
 						? 'bg-shark-primary text-white shadow-sm'
 						: 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',

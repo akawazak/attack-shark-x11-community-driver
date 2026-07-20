@@ -1,7 +1,7 @@
 <template>
 	<input
 		type="range"
-		class="w-full h-2 bg-[var(--text-primary)]/10 hover:bg-[var(--text-primary)]/20 rounded-lg appearance-none cursor-pointer accent-shark-primary transition-colors"
+		class="w-full h-2 bg-[var(--text-primary)]/10 hover:bg-[var(--text-primary)]/20 rounded-lg appearance-none cursor-pointer accent-shark-primary"
 		v-bind="$attrs"
 		v-model="internalValue"
 	/>

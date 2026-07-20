@@ -30,11 +30,7 @@ const glowColor = computed(() => {
 		<template v-if="connected && level >= 0">
 			<!-- Animated battery -->
 			<div class="relative w-10 h-5 border-2 border-[var(--sidebar-border)] rounded-md p-[2px]">
-				<div
-					class="h-full rounded-sm transition-all duration-700 ease-out"
-					:class="batteryColor"
-					:style="{ width: `${percent}%` }"
-				/>
+				<div class="h-full rounded-sm" :class="batteryColor" :style="{ width: `${percent}%` }" />
 				<div
 					class="absolute -right-[3px] top-[3px] w-[3px] h-[10px] bg-[var(--sidebar-border)] rounded-r-[2px]"
 				/>

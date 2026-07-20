@@ -45,7 +45,7 @@ onMounted(() => {
 <template>
 	<button
 		@click="toggleTheme"
-		class="p-2 rounded-lg transition-all hover:bg-[var(--sidebar-hover)]"
+		class="p-2 rounded-lg hover:bg-[var(--sidebar-hover)]"
 		:title="'Switch to ' + themes[(themeIndex + 1) % themes.length]"
 	>
 		<component :is="themeIcons[themes[themeIndex]]" :class="['w-5 h-5', themeClasses[themes[themeIndex]]]" />

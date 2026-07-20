@@ -1,7 +1,7 @@
 <template>
 	<button
 		:class="[
-			'transition-all rounded-lg px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed',
+			'rounded-lg px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed',
 			variant === 'green'
 				? 'bg-green-600 hover:bg-green-700 text-white'
 				: variant === 'red'

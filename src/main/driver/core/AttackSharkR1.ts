@@ -111,7 +111,7 @@ export class AttackSharkR1 extends EventEmitter<AttackSharkR1Events> {
 		}
 
 		this.logger = options.logger ?? defaultLogger;
-		this.delayMs = options.delayMs ?? 250;
+		this.delayMs = options.delayMs ?? 500;
 		this.productId = options.connectionMode;
 	}
 

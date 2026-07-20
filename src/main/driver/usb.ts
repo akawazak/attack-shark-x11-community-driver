@@ -42,9 +42,9 @@ interface HidDeviceInfo {
 }
 
 interface HidDeviceHandle {
-	close(): void;
-	sendFeatureReport(data: number[]): number;
-	readTimeout(timeout: number): number[];
+	close(): Promise<void>;
+	sendFeatureReport(data: number[]): Promise<number>;
+	read(timeout?: number): Promise<Buffer | undefined>;
 }
 
 const WINDOWS_HID_VENDOR_ID = 0x1d57;
@@ -76,10 +76,10 @@ class WindowsHidUsbDevice implements UsbDevice {
 	async open(): Promise<void> {
 		if (this.opened) return;
 		if (!this.featureInfo.path) throw new Error('Windows HID device has no path');
-		this.featureHandle = new HID.HID(this.featureInfo.path) as HidDeviceHandle;
+		this.featureHandle = (await HID.HIDAsync.open(this.featureInfo.path)) as HidDeviceHandle;
 		if (this.inputInfo?.path && this.inputInfo.path !== this.featureInfo.path) {
 			try {
-				this.inputHandle = new HID.HID(this.inputInfo.path) as HidDeviceHandle;
+				this.inputHandle = (await HID.HIDAsync.open(this.inputInfo.path)) as HidDeviceHandle;
 			} catch {
 				this.inputHandle = null;
 			}
@@ -89,8 +89,8 @@ class WindowsHidUsbDevice implements UsbDevice {
 
 	async close(): Promise<void> {
 		if (!this.opened) return;
-		this.inputHandle?.close();
-		this.featureHandle?.close();
+		await this.inputHandle?.close();
+		await this.featureHandle?.close();
 		this.inputHandle = null;
 		this.featureHandle = null;
 		this.opened = false;
@@ -130,8 +130,8 @@ class WindowsHidUsbDevice implements UsbDevice {
 	async nativeTransferIn(_endpointNumber: number, timeout: number, _length: number): Promise<Uint8Array | null> {
 		this.ensureOpen();
 		if (!this.inputHandle) return null;
-		const data = this.inputHandle.readTimeout(timeout);
-		return data.length > 0 ? Uint8Array.from(data) : null;
+		const data = await this.inputHandle.read(timeout);
+		return data && data.length > 0 ? Uint8Array.from(data) : null;
 	}
 
 	async nativeTransferOut(_endpointNumber: number, _timeout: number, _data: Uint8Array): Promise<number> {
@@ -145,11 +145,11 @@ class WindowsHidUsbDevice implements UsbDevice {
 	}
 }
 
-function findWindowsHidDevice(vendorId: number, productId: number): UsbDevice | null {
+async function findWindowsHidDevice(vendorId: number, productId: number): Promise<UsbDevice | null> {
 	if (process.platform !== 'win32') return null;
 	if (vendorId !== WINDOWS_HID_VENDOR_ID || !WINDOWS_HID_PRODUCT_IDS.has(productId)) return null;
 
-	const devices = HID.devices() as HidDeviceInfo[];
+	const devices = (await HID.devicesAsync(vendorId, productId)) as HidDeviceInfo[];
 	const matches = devices.filter((device) => device.vendorId === vendorId && device.productId === productId);
 	const featureDevice =
 		matches.find(
@@ -173,7 +173,7 @@ function findWindowsHidDevice(vendorId: number, productId: number): UsbDevice | 
 
 export const usb = {
 	async findDeviceByIds(vendorId: number, productId: number): Promise<UsbDevice | null> {
-		const hidDevice = findWindowsHidDevice(vendorId, productId);
+		const hidDevice = await findWindowsHidDevice(vendorId, productId);
 		if (hidDevice) return hidDevice;
 
 		const finder = usbBinding.findDeviceByIds ?? usbBinding.nativeFindDeviceByIds;

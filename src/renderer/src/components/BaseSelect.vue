@@ -1,6 +1,6 @@
 <template>
 	<select
-		class="w-full bg-[var(--border-card)]/50 border border-transparent hover:bg-[var(--border-card)]/80 focus:border-[var(--shark-primary)] focus:bg-[var(--border-card)]/100 rounded-lg p-3 transition-all"
+		class="w-full bg-[var(--border-card)]/50 border border-transparent hover:bg-[var(--border-card)]/80 focus:border-[var(--shark-primary)] focus:bg-[var(--border-card)]/100 rounded-lg p-3"
 		v-bind="$attrs"
 		:value="modelValue"
 		@change="onChange"

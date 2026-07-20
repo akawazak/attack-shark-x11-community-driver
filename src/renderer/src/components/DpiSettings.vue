@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { reactive, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Zap, Target, Sliders } from 'lucide-vue-next';
 import BaseInput from './BaseInput.vue';
 import BaseSlider from './BaseSlider.vue';
 import BaseToggle from './BaseToggle.vue';
 import Card from './Card.vue';
-import StatusMessage from './StatusMessage.vue';
-import { useDebounce } from '../composables/useDebounce';
+import { useLatestTask } from '../composables/useLatestTask';
 
 const { t } = useI18n();
 
@@ -31,6 +30,28 @@ const dpiConfig = reactive({
 		number,
 		number,
 	],
+});
+
+type DpiConfig = {
+	activeStage: number;
+	angleSnap: boolean;
+	ripplerControl: boolean;
+	dpiValues: number[];
+};
+
+const snapshotDpi = (): DpiConfig => ({
+	activeStage: dpiConfig.activeStage,
+	angleSnap: dpiConfig.angleSnap,
+	ripplerControl: dpiConfig.ripplerControl,
+	dpiValues: [...dpiConfig.dpiValues],
+});
+
+const queueDpi = useLatestTask(async (config: DpiConfig) => {
+	try {
+		await window.api.setDpi(config);
+	} catch (error: unknown) {
+		console.error('Auto-save DPI failed:', error);
+	}
 });
 
 onMounted(async () => {
@@ -65,59 +86,12 @@ onMounted(async () => {
 				},
 			});
 			if (props.isConnected) {
-				debouncedApplyDpi();
+				queueDpi(snapshotDpi());
 			}
 		},
 		{ deep: true },
 	);
 });
-
-const statusMessage = ref('');
-const isSaving = ref(false);
-const statusType = computed(() => (statusMessage.value.includes(t('dpi.error')) ? 'error' : 'success'));
-
-const debouncedApplyDpi = useDebounce(async () => {
-	if (!props.isConnected) return;
-	try {
-		const config = {
-			activeStage: dpiConfig.activeStage,
-			angleSnap: dpiConfig.angleSnap,
-			ripplerControl: dpiConfig.ripplerControl,
-			dpiValues: [...dpiConfig.dpiValues],
-		};
-		await window.api.setDpi(config);
-	} catch (err: unknown) {
-		const error = err instanceof Error ? err : new Error(String(err));
-		console.error('Auto-save DPI failed:', error);
-	}
-}, 300);
-
-const applyDpi = async () => {
-	if (!props.isConnected) return;
-
-	isSaving.value = true;
-	statusMessage.value = t('dpi.updating');
-
-	try {
-		const config = {
-			activeStage: dpiConfig.activeStage,
-			angleSnap: dpiConfig.angleSnap,
-			ripplerControl: dpiConfig.ripplerControl,
-			dpiValues: [...dpiConfig.dpiValues],
-		};
-
-		await window.api.setDpi(config);
-		statusMessage.value = t('dpi.applied');
-		setTimeout(() => {
-			statusMessage.value = '';
-		}, 3000);
-	} catch (err: unknown) {
-		const error = err instanceof Error ? err : new Error(String(err));
-		statusMessage.value = `${t('dpi.error')}: ${error.message}`;
-	} finally {
-		isSaving.value = false;
-	}
-};
 
 // DPI range depends on device model
 const dpiMin = computed(() => (props.deviceModel === 'R1' ? 100 : 50));
@@ -133,8 +107,6 @@ const dpiStep = computed(() => (props.deviceModel === 'R1' ? 100 : 50));
 				{{ $t('dpi.title') }}
 			</h2>
 		</div>
-
-		<StatusMessage :message="statusMessage" :type="statusType" />
 
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 			<!-- Sensor Settings -->
@@ -167,7 +139,7 @@ const dpiStep = computed(() => (props.deviceModel === 'R1' ? 100 : 50));
 							v-for="i in 6"
 							:key="i"
 							:class="[
-								'py-2 rounded-lg text-sm font-medium transition-all',
+								'py-2 rounded-lg text-sm font-medium',
 								dpiConfig.activeStage === i
 									? 'bg-shark-primary text-white shadow-sm font-bold'
 									: 'bg-[var(--border-card)]/50 text-[var(--text-primary)] opacity-70 hover:opacity-100',
@@ -202,7 +174,7 @@ const dpiStep = computed(() => (props.deviceModel === 'R1' ? 100 : 50));
 							>
 								<span
 									:class="[
-										'w-8 h-8 flex items-center justify-center rounded-full text-sm transition-all',
+										'w-8 h-8 flex items-center justify-center rounded-full text-sm',
 										dpiConfig.activeStage === i
 											? 'bg-shark-primary text-white shadow-lg shadow-shark-primary/50 font-bold ring-2 ring-shark-primary ring-offset-2 ring-offset-[var(--bg-card)]'
 											: 'bg-[var(--border-card)] text-[var(--text-primary)] opacity-50',

@@ -128,8 +128,6 @@ const applyCustomMacro = async () => {
 	}
 };
 
-// Removed debounced watcher
-
 const getEventLabel = (event: MacroEvent): string => {
 	if (event.type === 'key') {
 		const keyEntry = Object.entries(KeyCode).find(([, v]) => v === event.keyCode);
@@ -196,7 +194,7 @@ const getEventDelayLabel = (event: MacroEvent): string => {
 					<Plus class="w-5 h-5 text-shark-primary" /> {{ $t('macros.events') }}
 					<button
 						@click="addEvent"
-						class="bg-shark-primary hover:bg-shark-primary/80 text-white px-3 py-1 rounded-lg text-sm transition-all flex items-center gap-1"
+						class="bg-shark-primary hover:bg-shark-primary/80 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
 					>
 						<Plus class="w-4 h-4" /> {{ $t('macros.addEvent') }}
 					</button>
@@ -271,10 +269,7 @@ const getEventDelayLabel = (event: MacroEvent): string => {
 							<p class="font-medium text-[var(--text-primary)] truncate">{{ getEventLabel(event) }}</p>
 							<p class="text-xs text-[var(--text-tertiary)]">{{ getEventDelayLabel(event) }}</p>
 						</div>
-						<button
-							@click="removeEvent(index)"
-							class="text-red-400 hover:text-red-300 p-1 transition-colors"
-						>
+						<button @click="removeEvent(index)" class="text-red-400 hover:text-red-300 p-1">
 							<Trash2 class="w-5 h-5" />
 						</button>
 					</div>

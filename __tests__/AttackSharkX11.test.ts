@@ -65,7 +65,8 @@ vi.mock('../src/main/driver/usb.js', () => ({
 	},
 }));
 
-const { AttackSharkX11, ConnectionMode, DriverError, DeviceError } = await import('../src/main/driver/index.js');
+const { AttackSharkX11, AttackSharkR1, ConnectionMode, DriverError, DeviceError } =
+	await import('../src/main/driver/index.js');
 const originalPlatform = process.platform;
 
 function createDriver(mode: ConnectionMode = ConnectionMode.Adapter, delayMs = 0): InstanceType<typeof AttackSharkX11> {
@@ -86,7 +87,7 @@ describe('AttackSharkX11', () => {
 			const driver = new AttackSharkX11({ connectionMode: ConnectionMode.Adapter });
 			expect(driver.connectionMode).toBe(ConnectionMode.Adapter);
 			expect(driver.productId).toBe(0xfa60);
-			expect(driver.delayMs).toBe(250);
+			expect(driver.delayMs).toBe(500);
 		});
 
 		it('should create a Wired-mode instance when connection mode is specified', () => {
@@ -109,6 +110,11 @@ describe('AttackSharkX11', () => {
 
 		it('should accept custom delayMs', () => {
 			const driver = new AttackSharkX11({ connectionMode: ConnectionMode.Adapter, delayMs: 500 });
+			expect(driver.delayMs).toBe(500);
+		});
+
+		it('should use the same memory-write cooldown for the R1 driver', () => {
+			const driver = new AttackSharkR1({ connectionMode: ConnectionMode.R1Wired });
 			expect(driver.delayMs).toBe(500);
 		});
 	});
@@ -303,6 +309,38 @@ describe('AttackSharkX11', () => {
 
 			expect(Buffer.isBuffer(result)).toBe(true);
 			expect((result as Buffer).length).toBe(15);
+		});
+
+		it('should allow reads while a memory write is pending', async () => {
+			const driver = createDriver();
+			await driver.open();
+
+			let resolveWrite: (value: number) => void = () => undefined;
+			const pendingWrite = new Promise<number>((resolve) => {
+				resolveWrite = resolve;
+			});
+			mockAdapterDevice.nativeControlTransferOut.mockImplementationOnce(() => pendingWrite);
+
+			const write = driver.controlTransfer({
+				bmRequestType: 0x21,
+				bRequest: 0x09,
+				wValue: 0x0304,
+				wIndex: 2,
+				data: Buffer.from([0x04]),
+			});
+			await Promise.resolve();
+
+			const read = await driver.controlTransfer({
+				bmRequestType: 0xa1,
+				bRequest: 0x01,
+				wValue: 0x0305,
+				wIndex: 2,
+				data: 15,
+			});
+
+			expect((read as Buffer).length).toBe(15);
+			resolveWrite(1);
+			await expect(write).resolves.toBe(1);
 		});
 	});
 

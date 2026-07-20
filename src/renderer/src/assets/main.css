@@ -138,21 +138,13 @@ html.cappuccino {
 	--shark-dark: #4a3728;
 }
 
-/* Global smooth transitions for themed properties */
+/* Keep all application interaction feedback immediate. */
 *,
 *::before,
 *::after {
-	transition-property: background-color, border-color, color, box-shadow;
-	transition-duration: 200ms;
-	transition-timing-function: ease;
-}
-
-/* Exclude transitions from elements that need instant changes */
-input,
-select,
-button,
-a {
-	transition-property: background-color, border-color, color, box-shadow, transform, opacity;
+	transition-duration: 0s !important;
+	transition-delay: 0s !important;
+	scroll-behavior: auto !important;
 }
 
 body {
@@ -160,9 +152,6 @@ body {
 	color: var(--text-primary);
 	font-family: sans-serif;
 	overflow: hidden;
-	transition:
-		background-color 0.3s,
-		color 0.3s;
 }
 
 #app {
@@ -173,32 +162,6 @@ body {
 
 #sidebar {
 	position: relative;
-}
-
-/* Tab transition animations */
-.fade-slide-enter-active {
-	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.fade-slide-leave-active {
-	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.fade-slide-enter-from {
-	opacity: 0;
-	transform: translateX(16px);
-}
-.fade-slide-leave-to {
-	opacity: 0;
-	transform: translateX(-16px);
-}
-
-/* Sidebar collapse transition */
-.sidebar-collapse-enter-active,
-.sidebar-collapse-leave-active {
-	transition: all 0.3s ease;
-}
-.sidebar-collapse-enter-from,
-.sidebar-collapse-leave-to {
-	width: 4rem;
 }
 
 /* Range slider styling */
@@ -212,9 +175,6 @@ input[type='range']::-webkit-slider-thumb {
 	border-radius: 50%;
 	cursor: pointer;
 	box-shadow: 0 0 10px var(--focus-ring);
-	transition:
-		transform 0.15s ease,
-		box-shadow 0.15s ease;
 }
 
 input[type='range']:hover::-webkit-slider-thumb {
@@ -230,9 +190,6 @@ input[type='range']::-moz-range-thumb {
 	border-radius: 50%;
 	cursor: pointer;
 	box-shadow: 0 0 10px var(--focus-ring);
-	transition:
-		transform 0.15s ease,
-		box-shadow 0.15s ease;
 }
 
 input[type='range']:hover::-moz-range-thumb {
