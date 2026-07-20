@@ -109,11 +109,11 @@ class WindowsHidUsbDevice implements UsbDevice {
 	}
 
 	async detachKernelDriver(_interfaceNumber: number): Promise<void> {
-		return;
+		// node-hid does not expose kernel-driver lifecycle operations.
 	}
 
 	async attachKernelDriver(_interfaceNumber: number): Promise<void> {
-		return;
+		// node-hid does not expose kernel-driver lifecycle operations.
 	}
 
 	async nativeControlTransferIn(_setup: unknown, _timeout: number, _length: number): Promise<Uint8Array | null> {
@@ -122,9 +122,9 @@ class WindowsHidUsbDevice implements UsbDevice {
 	}
 
 	async nativeControlTransferOut(_setup: unknown, _timeout: number, data?: Uint8Array | null): Promise<number> {
-		this.ensureOpen();
+		const featureHandle = this.ensureOpen();
 		if (!data || data.length === 0) return 0;
-		return this.featureHandle!.sendFeatureReport(Array.from(data));
+		return featureHandle.sendFeatureReport(Array.from(data));
 	}
 
 	async nativeTransferIn(_endpointNumber: number, timeout: number, _length: number): Promise<Uint8Array | null> {
@@ -139,8 +139,9 @@ class WindowsHidUsbDevice implements UsbDevice {
 		throw new Error('HID interrupt writes are not supported by the Windows HID transport');
 	}
 
-	private ensureOpen(): void {
+	private ensureOpen(): HidDeviceHandle {
 		if (!this.opened || !this.featureHandle) throw new Error('Windows HID device is not open');
+		return this.featureHandle;
 	}
 }
 

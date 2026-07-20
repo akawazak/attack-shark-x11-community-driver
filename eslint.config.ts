@@ -67,5 +67,12 @@ export default defineConfig([
 			'@typescript-eslint/no-non-null-assertion': 'warn',
 		},
 	},
+	{
+		files: ['src/main/driver/usb.ts'],
+		rules: {
+			// The Windows HID adapter implements a Promise-based USB interface over synchronous node-hid calls.
+			'require-await': 'off',
+		},
+	},
 	prettier,
 ]);

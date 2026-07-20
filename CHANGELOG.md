@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.5] - 2026-07-20
+
+### Fixed
+- Mock the application USB adapter in driver tests so coverage runs do not depend on native-module interop on the runner platform.
+- Align GitHub Actions with the tested Bun 1.3.14 runtime and current setup action.
+- Make the Windows HID compatibility adapter pass the repository's intended lint rules without changing its Promise-based API.
+
 ## [1.4.4] - 2026-07-20
 
 ### Changed
