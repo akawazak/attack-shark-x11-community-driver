@@ -23,6 +23,7 @@ import {
 import { WriteQueue } from '../utils/writeQueue.js';
 import { logger as defaultLogger } from '../logger/index.js';
 import { BatteryMonitor } from './BatteryMonitor.js';
+import type { BatteryDiagnostics, BatteryStatus } from '../../../shared/app-types.js';
 
 type USBRequestType = 'standard' | 'class' | 'vendor';
 type USBRecipient = 'device' | 'interface' | 'endpoint' | 'other';
@@ -104,6 +105,7 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 	private logger: Logger;
 	private batteryMonitor: BatteryMonitor | null = null;
 	private memoryWriteQueue = new WriteQueue();
+	private deviceOperationQueue = new WriteQueue();
 	private cachedUserPreferences: UserPreferencesBuilderOptions | null = null;
 
 	constructor(options: { connectionMode: ConnectionMode; logger?: Logger; delayMs?: number }) {
@@ -290,7 +292,7 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 		} as ControlTransferOut) as Promise<number>;
 	}
 
-	getBatteryLevel(timeoutMs = 2500): Promise<number> {
+	getBatteryLevel(timeoutMs = 6000): Promise<number> {
 		this.checkIsOpen();
 
 		if (this.connectionMode === ConnectionMode.Wired) {
@@ -333,6 +335,22 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 		});
 	}
 
+	getBatteryStatus(): BatteryStatus {
+		return (
+			this.batteryMonitor?.getStatus() ?? {
+				level: -1,
+				state: 'unavailable',
+				updatedAt: null,
+				sampleCount: 0,
+				rejectedCount: 0,
+			}
+		);
+	}
+
+	getBatteryDiagnostics(): BatteryDiagnostics {
+		return this.batteryMonitor?.getDiagnostics() ?? { status: this.getBatteryStatus(), samples: [] };
+	}
+
 	onBatteryChange(listener: (battery: number) => void): () => void {
 		this.checkIsOpen();
 		this.on('batteryChange', listener);
@@ -344,22 +362,23 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 	setDpi(options: DpiBuilder | DpiBuilderOptions): Promise<number> {
 		this.checkIsOpen();
 		const builder = options instanceof DpiBuilder ? options : new DpiBuilder(options);
-		return this.sendBuilder(builder);
+		return this.deviceOperationQueue.run(() => this.sendBuilder(builder), 0);
 	}
 
 	setPollingRate(rate: Rate | PollingRateBuilderType): Promise<number> {
 		this.checkIsOpen();
 		const builder = rate instanceof PollingRateBuilder ? rate : new PollingRateBuilder().setRate(rate);
-		return this.sendBuilder(builder);
+		return this.deviceOperationQueue.run(() => this.sendBuilder(builder), 0);
 	}
 
 	setUserPreferences(options: UserPreferencesBuilder | UserPreferencesBuilderOptions): Promise<number> {
 		this.checkIsOpen();
 		const builder = options instanceof UserPreferencesBuilder ? options : new UserPreferencesBuilder(options);
-		if (!(options instanceof UserPreferencesBuilder)) {
-			this.cachedUserPreferences = { ...options };
-		}
-		return this.sendBuilder(builder);
+		return this.deviceOperationQueue.run(async () => {
+			const result = await this.sendBuilder(builder);
+			if (!(options instanceof UserPreferencesBuilder)) this.cachedUserPreferences = structuredClone(options);
+			return result;
+		}, 0);
 	}
 
 	getCachedUserPreferences(): UserPreferencesBuilderOptions | null {
@@ -369,14 +388,19 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 	setMacro(config: MacroBuilderOptions | MacrosBuilder): Promise<number> {
 		this.checkIsOpen();
 		const builder = config instanceof MacrosBuilder ? config : new MacrosBuilder(config);
-		return this.sendBuilder(builder);
+		return this.deviceOperationQueue.run(() => this.sendBuilder(builder), 0);
 	}
 
-	async setCustomMacro(
+	setCustomMacro(
 		optionsOrPackets: CustomMacroBuilder | CustomMacroBuilderOptions | [Buffer, Buffer, Buffer, Buffer],
 	): Promise<void> {
 		this.checkIsOpen();
+		return this.deviceOperationQueue.run(() => this.writeCustomMacro(optionsOrPackets), 0);
+	}
 
+	private async writeCustomMacro(
+		optionsOrPackets: CustomMacroBuilder | CustomMacroBuilderOptions | [Buffer, Buffer, Buffer, Buffer],
+	): Promise<void> {
 		let packets: Buffer[];
 		let bmRequestType = 0x21;
 		let bRequest = 0x09;
@@ -424,25 +448,25 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 
 	sendInternalStateResetReportBuilder(): Promise<number> {
 		this.checkIsOpen();
-		return this.sendBuilder(new InternalStateResetReportBuilder());
+		return this.deviceOperationQueue.run(() => this.sendBuilder(new InternalStateResetReportBuilder()), 0);
 	}
 
 	resetPollingRate(): Promise<number> {
 		this.checkIsOpen();
-		return this.sendBuilder(new PollingRateBuilder());
+		return this.deviceOperationQueue.run(() => this.sendBuilder(new PollingRateBuilder()), 0);
 	}
 
 	resetDpi(): Promise<number> {
 		this.checkIsOpen();
-		return this.sendBuilder(new DpiBuilder());
+		return this.deviceOperationQueue.run(() => this.sendBuilder(new DpiBuilder()), 0);
 	}
 
 	resetMacro(): Promise<number> {
 		this.checkIsOpen();
-		return this.sendBuilder(new MacrosBuilder());
+		return this.deviceOperationQueue.run(() => this.sendBuilder(new MacrosBuilder()), 0);
 	}
 
-	async resetCustomMacro(): Promise<void> {
+	resetCustomMacro(): Promise<void> {
 		this.checkIsOpen();
 		const builder = new CustomMacroBuilder({
 			playOptions: {
@@ -452,22 +476,29 @@ export class AttackSharkX11 extends EventEmitter<AttackSharkX11Events> {
 			targetButton: Button.BACKWARD,
 			macroEvents: [],
 		});
-		await this.setCustomMacro(builder);
+		return this.deviceOperationQueue.run(() => this.writeCustomMacro(builder), 0);
 	}
 
 	resetUserPreferences(): Promise<number> {
 		this.checkIsOpen();
-		return this.sendBuilder(new UserPreferencesBuilder().setKeyResponse(8));
+		return this.deviceOperationQueue.run(() => this.sendBuilder(new UserPreferencesBuilder().setKeyResponse(8)), 0);
 	}
 
-	async reset(): Promise<void> {
+	reset(): Promise<void> {
 		this.checkIsOpen();
-		await this.sendInternalStateResetReportBuilder();
-		await this.resetDpi();
-		await this.resetUserPreferences();
-		await this.resetPollingRate();
-		await this.resetMacro();
-		await this.resetCustomMacro();
+		return this.deviceOperationQueue.run(async () => {
+			await this.sendBuilder(new InternalStateResetReportBuilder());
+			await this.sendBuilder(new DpiBuilder());
+			await this.sendBuilder(new UserPreferencesBuilder().setKeyResponse(8));
+			await this.sendBuilder(new PollingRateBuilder());
+			await this.sendBuilder(new MacrosBuilder());
+			const builder = new CustomMacroBuilder({
+				playOptions: { mode: MacroMode.THE_NUMBER_OF_TIME_TO_PLAY, times: 1 },
+				targetButton: Button.BACKWARD,
+				macroEvents: [],
+			});
+			await this.writeCustomMacro(builder);
+		}, 0);
 	}
 
 	getDeviceInfo(): {

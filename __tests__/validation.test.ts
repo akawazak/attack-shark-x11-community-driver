@@ -52,4 +52,9 @@ describe('validateDpiConfig', () => {
 		expect(result.angleSnap).toBe(false);
 		expect(result.dpiValues).toEqual([800, 1600, 2400, 3200, 5000, 22000]);
 	});
+
+	it('should reject unknown fields and enforce the selected model range', () => {
+		expect(() => validateDpiConfig({ unexpected: true })).toThrow();
+		expect(() => validateDpiConfig({ dpiValues: [50, 800, 1600, 3200, 5000, 12000] }, 18000, 100)).toThrow();
+	});
 });

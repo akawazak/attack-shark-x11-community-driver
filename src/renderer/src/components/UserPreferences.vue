@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed, reactive } from 'vue';
+import { ref, watch, computed, reactive, nextTick } from 'vue';
 import { Palette, Cpu, Database, Settings, AlertTriangle, RotateCcw } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
 import BaseButton from './BaseButton.vue';
@@ -8,7 +8,6 @@ import BaseSelect from './BaseSelect.vue';
 import BaseSlider from './BaseSlider.vue';
 import Card from './Card.vue';
 import StatusMessage from './StatusMessage.vue';
-import { useLatestTask } from '../composables/useLatestTask';
 
 export interface UserPreferences {
 	lightMode: number;
@@ -35,12 +34,13 @@ const DEFAULT_PREFS: UserPreferences = {
 const props = defineProps<{
 	isConnected: boolean;
 	modelValue: UserPreferences;
-	deviceModel?: 'X11' | 'X11SE' | 'R1';
+	deviceProtocol?: 'X11' | 'R1';
 }>();
 
 const emit = defineEmits(['update:modelValue', 'resetComplete']);
 
 const form = reactive<UserPreferences>({ ...DEFAULT_PREFS, ...props.modelValue });
+let syncingFromProps = false;
 
 const toDevicePreferences = (value: UserPreferences) => ({
 	lightMode: value.lightMode,
@@ -51,50 +51,29 @@ const toDevicePreferences = (value: UserPreferences) => ({
 	rgb: { ...value.rgb },
 });
 
-let lastDevicePreferences = JSON.stringify(toDevicePreferences(form));
-let lastPollingRate = form.pollingRate;
-
-const queueDevicePreferences = useLatestTask(async (preferences: ReturnType<typeof toDevicePreferences>) => {
-	try {
-		await window.api.setUserPreferences(preferences);
-	} catch (error: unknown) {
-		console.error('Auto-save preferences failed:', error);
-	}
-});
-
-const queuePollingRate = useLatestTask(async (pollingRate: number) => {
-	try {
-		await window.api.setPollingRate(pollingRate);
-	} catch (error: unknown) {
-		console.error('Auto-save polling rate failed:', error);
-	}
-});
+const isDirty = ref(false);
+const isSaving = ref(false);
 
 watch(
 	() => props.modelValue,
 	(newVal) => {
+		syncingFromProps = true;
 		Object.assign(form, newVal);
+		void nextTick(() => {
+			syncingFromProps = false;
+		});
 	},
 	{ deep: true },
 );
 
-// Watch form changes to sync with parent and auto-apply
+// Form edits update the UI and local app settings immediately. Mouse memory is changed only by Apply.
 watch(
 	form,
 	(newVal) => {
+		if (syncingFromProps) return;
 		emit('update:modelValue', { ...newVal });
-		if (props.isConnected) {
-			const devicePreferences = toDevicePreferences(newVal);
-			const devicePreferencesKey = JSON.stringify(devicePreferences);
-			if (devicePreferencesKey !== lastDevicePreferences) {
-				lastDevicePreferences = devicePreferencesKey;
-				queueDevicePreferences(devicePreferences);
-			}
-			if (newVal.pollingRate !== lastPollingRate) {
-				lastPollingRate = newVal.pollingRate;
-				queuePollingRate(newVal.pollingRate);
-			}
-		}
+		isDirty.value = true;
+		statusMessage.value = '';
 	},
 	{ deep: true },
 );
@@ -121,16 +100,22 @@ const lightModes = computed(() => [
 const keyResponses = Array.from({ length: 24 }, (_, i) => 4 + i * 2);
 
 const statusMessage = ref('');
-const statusType = computed(() => (statusMessage.value.includes('Error') ? 'error' : 'success'));
+const statusType = ref<'success' | 'error' | 'info'>('info');
 const profiles = ref<string[]>([]);
 const newProfileName = ref('');
 
 const loadProfilesList = async () => {
-	profiles.value = await window.api.listProfiles();
+	try {
+		profiles.value = await window.api.listProfiles();
+	} catch (error: unknown) {
+		showProfileError(error);
+	}
 };
 
 const saveNewProfile = async () => {
-	if (!newProfileName.value) return;
+	const profileName = newProfileName.value.trim();
+	if (!profileName) return;
+	if (profiles.value.includes(profileName) && !confirm(t('preferences.overwriteProfile'))) return;
 	const plainPrefs = {
 		lightMode: form.lightMode,
 		ledSpeed: form.ledSpeed,
@@ -140,27 +125,72 @@ const saveNewProfile = async () => {
 		deepSleepTime: form.deepSleepTime,
 		rgb: { ...form.rgb },
 	};
-	await window.api.saveProfile(newProfileName.value, plainPrefs);
-	newProfileName.value = '';
-	await loadProfilesList();
+	try {
+		await window.api.saveProfile(profileName, plainPrefs);
+		newProfileName.value = '';
+		await loadProfilesList();
+		statusType.value = 'success';
+		statusMessage.value = t('preferences.profileSaved');
+	} catch (error: unknown) {
+		showProfileError(error);
+	}
 };
 
 const applyProfile = async (name: string) => {
-	const data = await window.api.loadProfile(name);
-	if (data) {
-		const prefs = data as UserPreferences;
-		Object.assign(form, prefs);
+	try {
+		const data = await window.api.loadProfile(name);
+		if (data) {
+			const prefs = data as UserPreferences;
+			Object.assign(form, prefs);
+			statusType.value = 'info';
+			statusMessage.value = t('preferences.profileLoaded');
+		}
+	} catch (error: unknown) {
+		showProfileError(error);
 	}
 };
 
 const deleteProfile = async (name: string) => {
-	await window.api.deleteProfile(name);
-	await loadProfilesList();
+	if (!confirm(t('preferences.deleteProfileConfirm', { name }))) return;
+	try {
+		await window.api.deleteProfile(name);
+		await loadProfilesList();
+		statusType.value = 'success';
+		statusMessage.value = t('preferences.profileDeleted');
+	} catch (error: unknown) {
+		showProfileError(error);
+	}
 };
 
-loadProfilesList();
+function showProfileError(error: unknown): void {
+	const message = error instanceof Error ? error.message : String(error);
+	statusType.value = 'error';
+	statusMessage.value = `${t('preferences.profileError')}: ${message}`;
+}
+
+void loadProfilesList();
 
 const isResetting = ref(false);
+
+const applyPreferences = async () => {
+	if (!props.isConnected || isSaving.value) return;
+	isSaving.value = true;
+	statusType.value = 'info';
+	statusMessage.value = t('common.applyingToMouse');
+	try {
+		await window.api.setUserPreferences(toDevicePreferences(form));
+		await window.api.setPollingRate(form.pollingRate);
+		isDirty.value = false;
+		statusType.value = 'success';
+		statusMessage.value = t('common.savedToMouse');
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		statusType.value = 'error';
+		statusMessage.value = `${t('common.saveFailed')}: ${message}`;
+	} finally {
+		isSaving.value = false;
+	}
+};
 
 const resetDevice = async () => {
 	if (!confirm(t('reset.confirm'))) return;
@@ -172,6 +202,7 @@ const resetDevice = async () => {
 		emit('resetComplete');
 	} catch (err: unknown) {
 		const error = err instanceof Error ? err : new Error(String(err));
+		statusType.value = 'error';
 		statusMessage.value = `${t('reset.failed')}: ${error.message}`;
 	} finally {
 		isResetting.value = false;
@@ -193,6 +224,9 @@ const resetDevice = async () => {
 					class="w-48"
 				/>
 				<BaseButton @click="saveNewProfile"> {{ $t('preferences.saveProfile') }} </BaseButton>
+				<BaseButton @click="applyPreferences" variant="green" :disabled="!isConnected || isSaving || !isDirty">
+					{{ isSaving ? $t('common.applyingToMouse') : $t('common.applyToMouse') }}
+				</BaseButton>
 			</div>
 		</div>
 
@@ -212,7 +246,7 @@ const resetDevice = async () => {
 						@click="applyProfile(profile)"
 						class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm"
 					>
-						{{ $t('preferences.applyAction') }}
+						{{ $t('preferences.loadAction') }}
 					</button>
 					<button @click="deleteProfile(profile)" class="text-red-400 hover:text-red-300">
 						{{ $t('preferences.deleteAction') }}
@@ -224,7 +258,7 @@ const resetDevice = async () => {
 		<StatusMessage :message="statusMessage" :type="statusType" />
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-			<Card v-if="deviceModel !== 'R1'">
+			<Card v-if="deviceProtocol !== 'R1'">
 				<template #title>
 					<Palette class="w-6 h-6 text-shark-primary" />
 					{{ $t('preferences.lighting') }}

@@ -1,43 +1,96 @@
 name: AUR Release
 
 on:
-    workflow_dispatch:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable release tag (for example v1.5.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aur-release
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
 
 jobs:
-    aur-publish:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+  publish:
+    name: Publish exact release to AUR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+          persist-credentials: false
 
-            - name: Setup SSH for AUR
-              uses: webfactory/ssh-agent@v0.9.0
-              with:
-                  ssh-private-key: ${{ secrets.AUR_SSH_KEY }}
+      - name: Verify stable tag and package version
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          git tag --points-at HEAD --list "$RELEASE_TAG" | grep -Fx "$RELEASE_TAG"
+          package_version="$(node -p "require('./package.json').version")"
+          test "$RELEASE_TAG" = "v$package_version"
 
-            - name: Add AUR host key
-              run: |
-                  mkdir -p ~/.ssh
-                  ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+      - name: Configure pinned AUR SSH trust
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+          AUR_KNOWN_HOSTS: ${{ secrets.AUR_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$AUR_SSH_KEY"
+          test -n "$AUR_KNOWN_HOSTS"
+          install -d -m0700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 0600 ~/.ssh/id_ed25519
+          printf '%s\n' "$AUR_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 0644 ~/.ssh/known_hosts
+          printf '%s\n' \
+            'Host aur.archlinux.org' \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  IdentitiesOnly yes' \
+            '  StrictHostKeyChecking yes' \
+            > ~/.ssh/config
+          chmod 0600 ~/.ssh/config
 
-            - name: Clone AUR repository
-              run: |
-                  git clone ssh://aur@aur.archlinux.org/attack-shark-x11-electron.git /tmp/aur-repo
+      - name: Clone AUR package repository
+        run: git clone ssh://aur@aur.archlinux.org/attack-shark-x11-electron.git /tmp/aur-repo
 
-            - name: Update AUR package
-              run: |
-                  cd /tmp/aur-repo
-                  # Download source to compute sha256sum dynamically
-                  wget -q "https://github.com/akawazak/attack-shark-x11-community-driver/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz" -O /tmp/source.tar.gz
-                  SHA256=$(sha256sum /tmp/source.tar.gz | cut -d' ' -f1)
-                  # Copy PKGBUILD and .SRCINFO from main repo, then override values
-                  cp ${{ github.workspace }}/PKGBUILD .
-                  cp ${{ github.workspace }}/.SRCINFO .
-                  sed -i "s/pkgver=.*/pkgver=${GITHUB_REF_NAME#v}/" PKGBUILD
-                  sed -i "s|sha256sums=.*|sha256sums=('${SHA256}')|" PKGBUILD
-                  sed -i "s/pkgver = .*/pkgver = ${GITHUB_REF_NAME#v}/" .SRCINFO
-                  sed -i "s|source = .*|source = https://github.com/akawazak/attack-shark-x11-community-driver/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz|" .SRCINFO
-                  sed -i "s|sha256sums = .*|sha256sums = ${SHA256}|" .SRCINFO
-                  git add PKGBUILD .SRCINFO
-                  git -c user.name="GitHub Actions" -c user.email="actions@github.com" commit -m "release: ${GITHUB_REF_NAME}"
-                  git push origin master
+      - name: Update and publish package metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_version="${RELEASE_TAG#v}"
+          archive="/tmp/${RELEASE_TAG}.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+            "https://github.com/akawazak/attack-shark-x11-community-driver/archive/refs/tags/${RELEASE_TAG}.tar.gz" \
+            --output "$archive"
+          archive_sha="$(sha256sum "$archive" | cut -d' ' -f1)"
+
+          cd /tmp/aur-repo
+          cp "$GITHUB_WORKSPACE/PKGBUILD" PKGBUILD
+          cp "$GITHUB_WORKSPACE/.SRCINFO" .SRCINFO
+          cp "$GITHUB_WORKSPACE/attack-shark-x11-electron.install" attack-shark-x11-electron.install
+          sed -i "s/^pkgver=.*/pkgver=${package_version}/" PKGBUILD
+          sed -i "s/^sha256sums=.*/sha256sums=('${archive_sha}')/" PKGBUILD
+          sed -i "s/^\tpkgver = .*/\tpkgver = ${package_version}/" .SRCINFO
+          sed -i "s|^\tsource = .*|\tsource = https://github.com/akawazak/attack-shark-x11-community-driver/archive/refs/tags/${RELEASE_TAG}.tar.gz|" .SRCINFO
+          sed -i "s/^\tsha256sums = .*/\tsha256sums = ${archive_sha}/" .SRCINFO
+
+          git add PKGBUILD .SRCINFO attack-shark-x11-electron.install
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git -c user.name='GitHub Actions' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "release: ${RELEASE_TAG}"
+          git push origin master

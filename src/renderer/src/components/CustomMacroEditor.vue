@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, toRaw } from 'vue';
+import { ref, computed, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Keyboard, Plus, Trash2, Minimize } from 'lucide-vue-next';
 import BaseButton from './BaseButton.vue';
@@ -79,8 +79,28 @@ const newEventType = ref<'key' | 'mouse'>('key');
 const newEventKeyCode = ref(keyOptions.value[0]?.value ?? KeyCode.A);
 const newEventDelay = ref(10);
 const newEventIsRelease = ref(false);
+const encodedEventCount = computed(() =>
+	events.value.reduce((total, event) => total + (event.delayMs > 1070 ? 2 : 1), 0),
+);
+const newEventSize = computed(() => (newEventDelay.value > 1070 ? 2 : 1));
+const canAddEvent = computed(
+	() =>
+		Number.isInteger(newEventDelay.value) &&
+		newEventDelay.value >= 0 &&
+		newEventDelay.value <= 51_000 &&
+		encodedEventCount.value + newEventSize.value <= 47,
+);
+
+watch(newEventType, (type) => {
+	newEventKeyCode.value =
+		type === 'key' ? (keyOptions.value[0]?.value ?? KeyCode.A) : (mouseEventOptions[0]?.value ?? 0xf1);
+});
 
 const addEvent = () => {
+	if (!canAddEvent.value) {
+		statusMessage.value = `${t('macros.errorPrefix')}${t('macros.capacityError')}`;
+		return;
+	}
 	events.value.push({
 		type: newEventType.value,
 		keyCode: newEventKeyCode.value,
@@ -89,6 +109,7 @@ const addEvent = () => {
 	});
 	newEventDelay.value = 10;
 	newEventIsRelease.value = false;
+	statusMessage.value = '';
 };
 
 const removeEvent = (index: number) => {
@@ -118,7 +139,6 @@ const applyCustomMacro = async () => {
 		});
 
 		statusMessage.value = t('macros.customMacroApplied');
-		setTimeout(() => (statusMessage.value = ''), 3000);
 		emit('customMacroApplied');
 	} catch (err: unknown) {
 		const error = err instanceof Error ? err : new Error(String(err));
@@ -191,10 +211,14 @@ const getEventDelayLabel = (event: MacroEvent): string => {
 		<Card>
 			<template #title>
 				<div class="flex items-center justify-between">
-					<Plus class="w-5 h-5 text-shark-primary" /> {{ $t('macros.events') }}
+					<div class="flex items-center gap-2">
+						<Plus class="w-5 h-5 text-shark-primary" /> {{ $t('macros.events') }}
+						<span class="text-xs text-[var(--text-tertiary)]">{{ encodedEventCount }}/47</span>
+					</div>
 					<button
 						@click="addEvent"
-						class="bg-shark-primary hover:bg-shark-primary/80 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+						:disabled="!canAddEvent"
+						class="bg-shark-primary hover:bg-shark-primary/80 disabled:opacity-40 disabled:cursor-not-allowed text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
 					>
 						<Plus class="w-4 h-4" /> {{ $t('macros.addEvent') }}
 					</button>
@@ -214,7 +238,7 @@ const getEventDelayLabel = (event: MacroEvent): string => {
 					</div>
 					<div class="col-span-4">
 						<label class="block text-sm font-medium text-[var(--text-primary)] opacity-70 mb-1">{{
-							$t('macros.eventType') === 'key' ? $t('macros.key') : $t('macros.mouseButton')
+							newEventType === 'key' ? $t('macros.key') : $t('macros.mouseButton')
 						}}</label>
 						<BaseSelect v-model="newEventKeyCode">
 							<option
@@ -234,7 +258,7 @@ const getEventDelayLabel = (event: MacroEvent): string => {
 							type="number"
 							v-model.number="newEventDelay"
 							min="0"
-							max="60000"
+							max="51000"
 							step="1"
 							class="w-full"
 						/>

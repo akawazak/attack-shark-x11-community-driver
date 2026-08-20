@@ -7,10 +7,6 @@ updates:
       day: "monday"
       time: "09:00"
     open-pull-requests-limit: 10
-    reviewers:
-      - "dressedinblack5"
-    assignees:
-      - "dressedinblack5"
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -23,9 +19,6 @@ updates:
           - "*"
         update-types:
           - "security"
-    # Security updates only
-    allow:
-      - dependency-type: "direct"
     ignore:
       - dependency-name: "electron"
         update-types: ["version-update:semver-major"]

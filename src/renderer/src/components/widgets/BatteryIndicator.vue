@@ -1,17 +1,30 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+import type { BatteryStatus } from '../../../../shared/app-types.js';
+
+const { t } = useI18n();
 
 const props = withDefaults(
 	defineProps<{
-		level: number;
+		status: BatteryStatus;
 		connected: boolean;
 		mode?: 'Adapter' | 'Wired' | null;
 	}>(),
-	{ level: -1, connected: false, mode: null },
+	{ connected: false, mode: null },
 );
 
-const percent = computed(() => Math.max(0, Math.min(100, props.level)));
+const level = computed(() => props.status.level);
+const percent = computed(() => Math.max(0, Math.min(100, level.value)));
 const isWired = computed(() => props.connected && props.mode === 'Wired');
+const statusTitle = computed(() => {
+	if (isWired.value) return t('battery.wired');
+	if (props.status.state === 'initializing') return t('battery.checkingStable');
+	if (props.status.state === 'stale') return t('battery.stale');
+	if (props.status.updatedAt)
+		return t('battery.lastUpdated', { time: new Date(props.status.updatedAt).toLocaleTimeString() });
+	return t('battery.unavailable');
+});
 
 const batteryColor = computed(() => {
 	if (percent.value <= 20) return 'bg-red-500';
@@ -26,8 +39,8 @@ const glowColor = computed(() => {
 </script>
 
 <template>
-	<div class="flex items-center gap-2">
-		<template v-if="connected && level >= 0">
+	<div class="flex items-center gap-2" :title="statusTitle">
+		<template v-if="connected && !isWired && level >= 0">
 			<!-- Animated battery -->
 			<div class="relative w-10 h-5 border-2 border-[var(--sidebar-border)] rounded-md p-[2px]">
 				<div class="h-full rounded-sm" :class="batteryColor" :style="{ width: `${percent}%` }" />
@@ -54,20 +67,26 @@ const glowColor = computed(() => {
 				<path d="M10 9h4" />
 				<path d="M9 5v2h6V5" />
 			</svg>
-			<span class="text-sm font-medium text-[var(--sidebar-text-footer)]">Wired</span>
+			<span class="text-sm font-medium text-[var(--sidebar-text-footer)]">{{ $t('battery.wired') }}</span>
+		</template>
+		<template v-else-if="connected && status.state === 'initializing'">
+			<div class="w-10 h-5 border-2 border-[var(--sidebar-border)] rounded-md p-[2px] opacity-60">
+				<div class="h-full w-1/2 rounded-sm bg-[var(--sidebar-text-muted)]/40" />
+			</div>
+			<span class="text-xs text-[var(--sidebar-text-muted)]">{{ $t('battery.stabilizing') }}</span>
 		</template>
 		<template v-else-if="connected">
 			<div class="w-10 h-5 border-2 border-[var(--sidebar-border)] rounded-md p-[2px] opacity-60">
 				<div class="h-full w-1/2 rounded-sm bg-[var(--sidebar-text-muted)]/40" />
 			</div>
-			<span class="text-xs text-[var(--sidebar-text-muted)]">Battery unavailable</span>
+			<span class="text-xs text-[var(--sidebar-text-muted)]">{{ $t('battery.unavailable') }}</span>
 		</template>
 		<template v-else>
 			<!-- Disconnected -->
 			<div class="w-10 h-5 border-2 border-[var(--sidebar-text-muted)]/30 rounded-md p-[2px] opacity-30">
 				<div class="h-full w-0 rounded-sm" />
 			</div>
-			<span class="text-xs text-[var(--sidebar-text-muted)] italic">Disconnected</span>
+			<span class="text-xs text-[var(--sidebar-text-muted)] italic">{{ $t('battery.disconnected') }}</span>
 		</template>
 	</div>
 </template>

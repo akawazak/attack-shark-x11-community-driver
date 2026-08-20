@@ -1,24 +1,43 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron';
-import { join } from 'path';
+import { app, BrowserWindow, ipcMain, net, shell, type IpcMainInvokeEvent } from 'electron';
+import { fileURLToPath } from 'node:url';
+import { join, normalize } from 'node:path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import type { AttackSharkX11 } from './driver/core/AttackSharkX11.js';
 import type { AttackSharkR1 } from './driver/core/AttackSharkR1.js';
-import { ConnectionMode, type DeviceModel } from './driver/types.js';
+import { ConnectionMode } from './driver/types.js';
 import { validateDpiConfig } from './utils/validation.js';
+import {
+	validateCustomMacro,
+	validateMacroConfig,
+	validatePollingRate,
+	validateUserPreferences,
+} from './utils/ipcValidation.js';
 import * as profileManager from './storage/profileManager.js';
 import * as settingsManager from './storage/settingsManager.js';
-
-import { CustomMacroBuilder, type CustomMacroBuilderOptions } from './driver/protocols/CustomMacroBuilder.js';
+import { CustomMacroBuilder } from './driver/protocols/CustomMacroBuilder.js';
 import type { UserPreferencesBuilderOptions } from './driver/protocols/UserPreferencesBuilder.js';
-import type { MacroBuilderOptions } from './driver/protocols/MacrosBuilder.js';
 import type { MacroMode } from '../shared/macro-types.js';
-import { installUsbDriver } from './utils/driverInstaller.js';
 import { WriteQueue } from './driver/utils/writeQueue.js';
+import type { BatteryStatus, DeviceModel, DeviceProtocol, UpdateStatus } from '../shared/app-types.js';
+import {
+	capabilitiesForProtocol,
+	DEVICE_MODEL_LABELS,
+	validateDeviceSelection,
+	WIRELESS_PID,
+} from '../shared/device-profiles.js';
+import { isAllowedExternalUrl, isNewerVersion, parseVersion } from './utils/releaseSecurity.js';
 
 type ConnectedDriver = AttackSharkX11 | AttackSharkR1;
 
+const RELEASES_URL = 'https://github.com/akawazak/attack-shark-x11-community-driver/releases';
+const PROJECT_URL = 'https://github.com/akawazak/attack-shark-x11-community-driver';
+const LATEST_RELEASE_API = 'https://api.github.com/repos/akawazak/attack-shark-x11-community-driver/releases/latest';
+
+let mainWindow: BrowserWindow | null = null;
 let driver: ConnectedDriver | null = null;
 let deviceModel: DeviceModel = 'X11';
+let deviceProtocol: DeviceProtocol = 'X11';
+let updateStatus: UpdateStatus = { state: 'idle', currentVersion: app.getVersion() };
 const connectionQueue = new WriteQueue();
 
 function getDriver(): ConnectedDriver | null {
@@ -29,19 +48,13 @@ function setDriver(nextDriver: ConnectedDriver | null): void {
 	driver = nextDriver;
 }
 
-async function connectDevice(
-	params: number | { model: DeviceModel; mode: number },
-): Promise<{ success: boolean; error?: string }> {
+async function connectDevice(params: unknown): Promise<{ success: boolean; error?: string }> {
 	try {
-		// Backward compat: old signature passes just a number
-		let model: DeviceModel = 'X11';
-		let mode: number;
-		if (typeof params === 'number') {
-			mode = params;
-		} else {
-			model = params.model;
-			mode = params.mode;
-		}
+		if (!params || typeof params !== 'object' || Array.isArray(params)) throw new Error('Invalid device selection');
+		const raw = params as Record<string, unknown>;
+		if (Object.keys(raw).some((key) => key !== 'model' && key !== 'mode'))
+			throw new Error('Unknown device selection field');
+		const selection = validateDeviceSelection(raw['model'], raw['mode']);
 
 		const oldDriver = getDriver();
 		if (oldDriver) {
@@ -50,51 +63,128 @@ async function connectDevice(
 		}
 
 		let newDriver: ConnectedDriver;
-		if (model === 'R1') {
+		if (selection.protocol === 'R1') {
 			const { AttackSharkR1 } = await import('./driver/core/AttackSharkR1.js');
-			newDriver = new AttackSharkR1({ connectionMode: mode as ConnectionMode });
+			newDriver = new AttackSharkR1({ connectionMode: selection.productId as ConnectionMode });
 		} else {
 			const { AttackSharkX11 } = await import('./driver/core/AttackSharkX11.js');
-			newDriver = new AttackSharkX11({ connectionMode: mode as ConnectionMode });
+			newDriver = new AttackSharkX11({ connectionMode: selection.productId as ConnectionMode });
 		}
 
 		await newDriver.open();
-
-		newDriver.on('batteryChange', (level) => {
-			const windows = BrowserWindow.getAllWindows();
-			windows.forEach((w) => w.webContents.send('battery-updated', level));
-		});
-
+		newDriver.on('batteryChange', () => broadcastBatteryStatus(newDriver.getBatteryStatus()));
 		setDriver(newDriver);
-		deviceModel = model;
+		deviceModel = selection.model;
+		deviceProtocol = selection.protocol;
+		await settingsManager.patchSettings({
+			deviceModel: selection.model,
+			connectionMode: selection.productId === WIRELESS_PID ? 'Adapter' : 'Wired',
+		});
 		return { success: true };
 	} catch (error: unknown) {
 		setDriver(null);
-		const err = error instanceof Error ? error : new Error(String(error));
-		console.error('Connection failed:', err);
-		return { success: false, error: err.message };
+		const normalizedError = error instanceof Error ? error : new Error(String(error));
+		console.error('Connection failed:', normalizedError);
+		return { success: false, error: normalizedError.message };
 	}
 }
 
-async function setupAutoUpdates(): Promise<void> {
-	if (is.dev) return;
+async function disconnectDevice(): Promise<void> {
+	const connectedDriver = getDriver();
+	if (!connectedDriver) return;
+	setDriver(null);
+	await connectedDriver.close();
+}
 
-	const { autoUpdater } = await import('electron-updater');
-	autoUpdater.autoDownload = true;
-	autoUpdater.autoInstallOnAppQuit = true;
+function broadcastBatteryStatus(status: BatteryStatus): void {
+	for (const window of BrowserWindow.getAllWindows()) {
+		if (!window.isDestroyed()) window.webContents.send('battery-updated', status);
+	}
+}
 
-	autoUpdater.on('error', (error) => {
-		console.error('Auto-update failed:', error);
-	});
+function isTrustedRendererUrl(rawUrl: string): boolean {
+	try {
+		const parsed = new URL(rawUrl);
+		if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+			return parsed.origin === new URL(process.env['ELECTRON_RENDERER_URL']).origin;
+		}
+		if (parsed.protocol !== 'file:') return false;
+		const expectedPath = normalize(join(__dirname, '../renderer/index.html'));
+		return normalize(fileURLToPath(parsed)) === expectedPath;
+	} catch {
+		return false;
+	}
+}
 
-	autoUpdater.checkForUpdatesAndNotify().catch((error: unknown) => {
-		console.error('Auto-update check failed:', error);
+function assertTrustedSender(event: IpcMainInvokeEvent): void {
+	if (
+		!mainWindow ||
+		mainWindow.isDestroyed() ||
+		event.sender !== mainWindow.webContents ||
+		!event.senderFrame ||
+		event.senderFrame !== event.sender.mainFrame ||
+		!isTrustedRendererUrl(event.senderFrame.url)
+	) {
+		throw new Error('Blocked IPC request from an untrusted renderer');
+	}
+}
+
+function handleTrusted<TArgs extends unknown[], TResult>(
+	channel: string,
+	handler: (...args: TArgs) => TResult | Promise<TResult>,
+): void {
+	ipcMain.handle(channel, (event, ...args) => {
+		assertTrustedSender(event);
+		return handler(...(args as TArgs));
 	});
 }
 
+async function openTrustedExternal(rawUrl: string): Promise<boolean> {
+	if (!isAllowedExternalUrl(rawUrl)) return false;
+	await shell.openExternal(rawUrl);
+	return true;
+}
+
+function sendUpdateStatus(status: UpdateStatus): UpdateStatus {
+	updateStatus = status;
+	for (const window of BrowserWindow.getAllWindows()) {
+		if (!window.isDestroyed()) window.webContents.send('update-status', status);
+	}
+	return status;
+}
+
+async function checkForUpdates(): Promise<UpdateStatus> {
+	if (is.dev)
+		return sendUpdateStatus({
+			state: 'unsupported',
+			currentVersion: app.getVersion(),
+			message: 'Updates are checked in packaged builds.',
+		});
+	sendUpdateStatus({ state: 'checking', currentVersion: app.getVersion() });
+	try {
+		const response = await net.fetch(LATEST_RELEASE_API, {
+			headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'attack-shark-x11-driver' },
+		});
+		if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
+		const result = (await response.json()) as { tag_name?: unknown; draft?: unknown; prerelease?: unknown };
+		if (result.draft === true || result.prerelease === true || typeof result.tag_name !== 'string') {
+			throw new Error('The latest release metadata is invalid');
+		}
+		const version = result.tag_name.replace(/^v/, '');
+		if (!parseVersion(version)) throw new Error('The latest release version is invalid');
+		return sendUpdateStatus(
+			isNewerVersion(version, app.getVersion())
+				? { state: 'available', currentVersion: app.getVersion(), availableVersion: version }
+				: { state: 'up-to-date', currentVersion: app.getVersion(), availableVersion: version },
+		);
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		return sendUpdateStatus({ state: 'error', currentVersion: app.getVersion(), message });
+	}
+}
+
 function createWindow(): void {
-	// Create the browser window.
-	const mainWindow = new BrowserWindow({
+	mainWindow = new BrowserWindow({
 		width: 1125,
 		height: 837,
 		show: false,
@@ -111,126 +201,94 @@ function createWindow(): void {
 	});
 
 	mainWindow.on('ready-to-show', () => {
-		mainWindow.show();
-		void setupAutoUpdates();
-		if (is.dev) {
-			mainWindow.webContents.openDevTools();
-		}
+		mainWindow?.show();
+		if (is.dev) mainWindow?.webContents.openDevTools();
+		else setTimeout(() => void checkForUpdates(), 3000);
 	});
-
+	mainWindow.on('closed', () => {
+		mainWindow = null;
+	});
+	mainWindow.webContents.on('will-navigate', (event, url) => {
+		if (!isTrustedRendererUrl(url)) event.preventDefault();
+	});
+	mainWindow.webContents.on('will-redirect', (event, url) => {
+		if (!isTrustedRendererUrl(url)) event.preventDefault();
+	});
 	mainWindow.webContents.setWindowOpenHandler((details) => {
-		shell.openExternal(details.url);
+		if (isAllowedExternalUrl(details.url)) void openTrustedExternal(details.url);
 		return { action: 'deny' };
 	});
 
-	// HMR for renderer base on electron-vite cli.
-	// Load the remote URL for development or the local html file for production.
-	if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-		mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
-	} else {
-		mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
-	}
+	if (is.dev && process.env['ELECTRON_RENDERER_URL']) mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
+	else mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
 }
 
-// App lifecycle
-app.whenReady().then(() => {
-	// Set app user model id for windows
-	electronApp.setAppUserModelId('com.attackshark.driver');
+function registerIpcHandlers(): void {
+	handleTrusted('connect-device', (params: unknown) => connectionQueue.run(() => connectDevice(params), 0));
+	handleTrusted('disconnect-device', () => connectionQueue.run(() => disconnectDevice(), 0));
 
-	// Default open or close DevTools by F12 in development
-	// and ignore CommandOrControl + R in production.
-	// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-	app.on('browser-window-created', (_, window) => {
-		optimizer.watchWindowShortcuts(window);
+	handleTrusted('get-battery-status', (): BatteryStatus => {
+		return (
+			driver?.getBatteryStatus() ?? {
+				level: -1,
+				state: 'unavailable',
+				updatedAt: null,
+				sampleCount: 0,
+				rejectedCount: 0,
+			}
+		);
 	});
+	handleTrusted('get-battery-diagnostics', () => driver?.getBatteryDiagnostics() ?? null);
 
-	// IPC Handlers
-	ipcMain.handle('connect-device', (_, params: number | { model: DeviceModel; mode: number }) =>
-		connectionQueue.run(() => connectDevice(params), 0),
-	);
-
-	ipcMain.handle('install-usb-driver', () => {
-		return installUsbDriver();
-	});
-
-	ipcMain.handle('get-battery', async () => {
-		if (!driver) return -1;
-		try {
-			const level = await driver.getBatteryLevel();
-			return level;
-		} catch (err) {
-			console.error('Failed to get battery:', err);
-			return -1;
-		}
-	});
-
-	ipcMain.handle('set-dpi', async (_, config: unknown) => {
+	handleTrusted('set-dpi', async (config: unknown) => {
 		if (!driver) throw new Error('Device not connected');
-		const validated = validateDpiConfig(config);
+		const validated = validateDpiConfig(
+			config,
+			deviceProtocol === 'R1' ? 18000 : 22000,
+			deviceProtocol === 'R1' ? 100 : 50,
+		);
 		const result = await driver.setDpi(validated);
-
-		// Persist DPI config
-		const settings = await settingsManager.getSettings();
-		await settingsManager.saveSettings({ ...settings, dpiConfig: validated });
-
+		await settingsManager.patchSettings({ dpiConfig: validated });
 		return result;
 	});
 
-	ipcMain.handle('set-polling-rate', (_, rate: number) => {
+	handleTrusted('set-polling-rate', (rawRate: unknown) => {
 		if (!driver) throw new Error('Device not connected');
-		if (deviceModel === 'R1') {
-			return (driver as AttackSharkR1).setPollingRate(rate as never);
-		}
+		const rate = validatePollingRate(rawRate);
+		if (deviceProtocol === 'R1') return (driver as AttackSharkR1).setPollingRate(rate as never);
 		return (driver as AttackSharkX11).setPollingRate(rate as never);
 	});
 
-	ipcMain.handle('set-user-preferences', (_, prefs: UserPreferencesBuilderOptions) => {
+	handleTrusted('set-user-preferences', (rawPreferences: unknown) => {
 		if (!driver) throw new Error('Device not connected');
-		const s = { ...prefs };
-		if (typeof s.ledSpeed !== 'number' || s.ledSpeed < 1 || s.ledSpeed > 5) s.ledSpeed = 3;
-		if (typeof s.deepSleepTime !== 'number' || s.deepSleepTime < 1 || s.deepSleepTime > 60) s.deepSleepTime = 10;
-		if (typeof s.keyResponse !== 'number' || s.keyResponse < 4 || s.keyResponse > 50 || s.keyResponse % 2 !== 0)
-			s.keyResponse = 8;
-		return driver.setUserPreferences(s);
+		const preferences = validateUserPreferences(rawPreferences);
+		if (deviceProtocol === 'R1') return (driver as AttackSharkR1).setUserPreferences(preferences as never);
+		return (driver as AttackSharkX11).setUserPreferences(preferences);
 	});
 
-	ipcMain.handle('get-dpi', () => {
+	handleTrusted('get-dpi', () => {
 		if (!driver) throw new Error('Device not connected');
-
 		const isWired =
 			driver.connectionMode === ConnectionMode.Wired || driver.connectionMode === ConnectionMode.R1Wired;
-		if (isWired) {
-			return Buffer.alloc(0);
-		}
-
-		return driver.controlTransfer({
-			bmRequestType: 0xa1,
-			bRequest: 0x01,
-			wValue: 0x0304,
-			wIndex: 2,
-			data: 56,
-		});
+		if (isWired) return Buffer.alloc(0);
+		return driver.controlTransfer({ bmRequestType: 0xa1, bRequest: 0x01, wValue: 0x0304, wIndex: 2, data: 56 });
 	});
 
-	ipcMain.handle('get-summary', async () => {
+	handleTrusted('get-summary', async () => {
 		if (!driver) throw new Error('Device not connected');
-
 		try {
 			const isWired =
 				driver.connectionMode === ConnectionMode.Wired || driver.connectionMode === ConnectionMode.R1Wired;
-
 			if (isWired) {
 				const cached = driver.getCachedUserPreferences() as UserPreferencesBuilderOptions | null;
 				if (!cached) return null;
-
-				if (deviceModel === 'R1') {
+				if (deviceProtocol === 'R1') {
 					return {
 						sleepTime: cached.sleepTime ?? 0.5,
 						keyResponse: cached.keyResponse ?? 4,
 						deepSleepTime: cached.deepSleepTime ?? 10,
 					};
 				}
-
 				return {
 					lightMode: cached.lightMode ?? 0,
 					ledSpeed: cached.ledSpeed ?? 3,
@@ -241,193 +299,129 @@ app.whenReady().then(() => {
 				};
 			}
 
-			const prefs = await driver.controlTransfer({
+			const preferences = await driver.controlTransfer({
 				bmRequestType: 0xa1,
 				bRequest: 0x01,
 				wValue: 0x0305,
 				wIndex: 2,
 				data: 15,
 			});
-
-			if (!prefs || prefs.length < 15) {
-				console.warn('Device response too short for summary, got', prefs?.length, 'bytes');
-				return null;
-			}
-
-			if (deviceModel === 'R1') {
+			if (!preferences || preferences.length < 15) return null;
+			if (deviceProtocol === 'R1') {
 				return {
-					sleepTime: (prefs[9] ?? 1) / 2,
-					keyResponse: prefs[10] ?? 4,
-					deepSleepTime: Math.max(1, Math.min(60, Math.round(((prefs[5] ?? 0xa8) - 0x08) / 0x10))),
+					sleepTime: (preferences[9] ?? 1) / 2,
+					keyResponse: preferences[10] ?? 4,
+					deepSleepTime: Math.max(1, Math.min(60, Math.round(((preferences[5] ?? 0xa8) - 0x08) / 0x10))),
 				};
 			}
-
-			const configByte = prefs[4] ?? 0;
-			const hardwareSpeed = configByte & 0x0f;
-			const ledSpeed = (6 - hardwareSpeed) as 1 | 2 | 3 | 4 | 5;
-
+			const hardwareSpeed = (preferences[4] ?? 0) & 0x0f;
+			const ledSpeed = 6 - hardwareSpeed;
 			return {
-				lightMode: prefs[3] ?? 0,
+				lightMode: preferences[3] ?? 0,
 				ledSpeed: ledSpeed >= 1 && ledSpeed <= 5 ? ledSpeed : 3,
-				rgb: { r: prefs[6] ?? 0, g: prefs[7] ?? 0, b: prefs[8] ?? 0 },
-				sleepTime: (prefs[9] ?? 1) / 2,
-				keyResponse: prefs[10] ?? 4,
-				deepSleepTime: Math.max(1, Math.min(60, Math.round(((prefs[5] ?? 0xa8) - 0x08) / 0x10))),
+				rgb: { r: preferences[6] ?? 0, g: preferences[7] ?? 0, b: preferences[8] ?? 0 },
+				sleepTime: (preferences[9] ?? 1) / 2,
+				keyResponse: preferences[10] ?? 4,
+				deepSleepTime: Math.max(1, Math.min(60, Math.round(((preferences[5] ?? 0xa8) - 0x08) / 0x10))),
 			};
-		} catch (e) {
-			console.error('Failed to fetch device summary:', e);
+		} catch (error) {
+			console.error('Failed to fetch device summary:', error);
 			return null;
 		}
 	});
 
-	ipcMain.handle('get-device-info', () => {
+	handleTrusted('get-device-info', () => {
 		if (!driver) throw new Error('Device not connected');
-		return driver.getDeviceInfo();
+		return {
+			...driver.getDeviceInfo(),
+			product: DEVICE_MODEL_LABELS[deviceModel],
+			protocol: deviceProtocol,
+			model: deviceModel,
+		};
 	});
-
-	ipcMain.handle('reset-device', async () => {
+	handleTrusted('reset-device', async () => {
 		if (!driver) throw new Error('Device not connected');
 		await driver.reset();
 		return { success: true };
 	});
 
-	ipcMain.handle('set-macro', (_, config: MacroBuilderOptions) => {
+	handleTrusted('set-macro', (rawConfig: unknown) => {
 		if (!driver) throw new Error('Device not connected');
-		if (deviceModel === 'R1') throw new Error('Macros not supported on R1');
-		return (driver as AttackSharkX11).setMacro(config);
+		if (deviceProtocol === 'R1') throw new Error('Macros are not supported by this device protocol');
+		return (driver as AttackSharkX11).setMacro(validateMacroConfig(rawConfig));
 	});
-
-	ipcMain.handle('set-custom-macro', (_, options: CustomMacroBuilderOptions) => {
+	handleTrusted('send-custom-macro', (rawConfig: unknown) => {
 		if (!driver) throw new Error('Device not connected');
-		if (deviceModel === 'R1') throw new Error('Macros not supported on R1');
-
-		const builder = new CustomMacroBuilder(options);
-
+		if (deviceProtocol === 'R1') throw new Error('Macros are not supported by this device protocol');
+		const config = validateCustomMacro(rawConfig);
+		const builder = new CustomMacroBuilder({
+			targetButton: config.targetButton,
+			playOptions: config.playOptions as { mode?: MacroMode; times?: number },
+		});
+		for (const event of config.events) builder.addEvent(event.keyCode, event.delayMs, event.isRelease);
 		return (driver as AttackSharkX11).setCustomMacro(builder);
 	});
 
-	interface SendMacroEvent {
-		keyCode: number;
-		delayMs: number;
-		isRelease: boolean;
-	}
-
-	ipcMain.handle(
-		'send-custom-macro',
-		(
-			_,
-			config: {
-				targetButton: number;
-				playOptions: { mode?: MacroMode; times?: number };
-				events: SendMacroEvent[];
-			},
-		) => {
-			if (!driver) throw new Error('Device not connected');
-			if (deviceModel === 'R1') throw new Error('Macros not supported on R1');
-
-			const builder = new CustomMacroBuilder({
-				targetButton: config.targetButton,
-				playOptions: config.playOptions,
-			});
-
-			for (const event of config.events) {
-				builder.addEvent(event.keyCode, event.delayMs, event.isRelease);
-			}
-
-			return (driver as AttackSharkX11).setCustomMacro(builder);
-		},
-	);
-
-	ipcMain.handle('get-device-model', () => deviceModel);
-
-	ipcMain.handle('get-device-capabilities', () => {
-		if (deviceModel === 'R1') {
-			return {
-				dpi: true,
-				pollingRate: true,
-				battery: true,
-				rgb: false,
-				macros: false,
-				buttonRemap: false,
-				lightMode: false,
-				ledSpeed: false,
-				sleepTime: true,
-				deepSleepTime: true,
-				keyResponse: true,
-				rippleControl: true,
-				angleSnap: true,
-			};
-		}
-		return {
-			dpi: true,
-			pollingRate: true,
-			battery: true,
-			rgb: true,
-			macros: true,
-			buttonRemap: true,
-			lightMode: true,
-			ledSpeed: true,
-			sleepTime: true,
-			deepSleepTime: true,
-			keyResponse: true,
-			rippleControl: true,
-			angleSnap: true,
-		};
-	});
-
-	ipcMain.handle('detect-device', async () => {
+	handleTrusted('get-device-model', () => deviceModel);
+	handleTrusted('get-device-protocol', () => deviceProtocol);
+	handleTrusted('get-device-capabilities', () => capabilitiesForProtocol(deviceProtocol));
+	handleTrusted('detect-device', async () => {
 		try {
 			const { usb } = await import('./driver/usb.js');
-			const knownPIDs: Array<{ mode: number; model: DeviceModel }> = [
-				{ mode: 0xfa60, model: 'X11' }, // R1, X11SE also use this PID — detected as X11 (same protocol)
-				{ mode: 0xfa55, model: 'X11' },
-				{ mode: 0xfa61, model: 'R1' },
-			];
-			for (const { mode, model } of knownPIDs) {
-				const device = await usb.findDeviceByIds(0x1d57, mode);
-				if (device) {
-					return { detected: true, mode, model };
-				}
-			}
-			return { detected: false };
-		} catch {
-			return { detected: false };
+			const devices = await usb.listKnownDevices();
+			return { detected: devices.length > 0, devices };
+		} catch (error) {
+			console.warn('Device detection failed:', error);
+			return { detected: false, devices: [] };
 		}
 	});
 
-	ipcMain.handle('list-profiles', () => profileManager.listProfiles());
-	ipcMain.handle('save-profile', (_, name: string, data: unknown) => profileManager.saveProfile(name, data));
-	ipcMain.handle('load-profile', (_, name: string) => profileManager.loadProfile(name));
-	ipcMain.handle('delete-profile', (_, name: string) => profileManager.deleteProfile(name));
+	handleTrusted('list-profiles', () => profileManager.listProfiles());
+	handleTrusted('save-profile', (name: unknown, data: unknown) => profileManager.saveProfile(name, data));
+	handleTrusted('load-profile', (name: unknown) => profileManager.loadProfile(name));
+	handleTrusted('delete-profile', (name: unknown) => profileManager.deleteProfile(name));
+	handleTrusted('get-settings', () => settingsManager.getSettings());
+	handleTrusted('patch-settings', (patch: unknown) => settingsManager.patchSettings(patch));
 
-	ipcMain.handle('get-settings', () => settingsManager.getSettings());
-	ipcMain.handle('save-settings', (_, settings) => settingsManager.saveSettings(settings));
+	handleTrusted('get-update-status', () => updateStatus);
+	handleTrusted('check-for-updates', () => checkForUpdates());
+	handleTrusted('open-release-page', (version?: unknown) => {
+		if (version !== undefined && (typeof version !== 'string' || !parseVersion(version)))
+			throw new Error('Invalid release version');
+		const url = typeof version === 'string' ? `${RELEASES_URL}/tag/v${version}` : RELEASES_URL;
+		return openTrustedExternal(url);
+	});
+	handleTrusted('open-project-page', () => openTrustedExternal(PROJECT_URL));
+	handleTrusted('get-platform-info', () => ({
+		platform: process.platform,
+		portable: process.platform === 'win32' && Boolean(process.env['PORTABLE_EXECUTABLE_FILE']),
+		version: app.getVersion(),
+	}));
+}
 
+app.whenReady().then(() => {
+	electronApp.setAppUserModelId('com.attackshark.driver');
+	app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window));
+	registerIpcHandlers();
 	createWindow();
-
-	app.on('activate', function () {
+	app.on('activate', () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
 	});
-
-	// Ensure driver is closed when app quits
-	app.on('before-quit', async (e) => {
-		if (driver) {
-			e.preventDefault();
-			const driverToClose = driver;
-			driver = null;
-			try {
-				await driverToClose.close();
-			} catch (err) {
-				console.error('Error during driver cleanup:', err);
-			} finally {
-				app.quit();
-			}
+	app.on('before-quit', async (event) => {
+		if (!driver) return;
+		event.preventDefault();
+		const driverToClose = driver;
+		driver = null;
+		try {
+			await driverToClose.close();
+		} catch (error) {
+			console.error('Error during driver cleanup:', error);
+		} finally {
+			app.quit();
 		}
 	});
 });
 
 app.on('window-all-closed', () => {
-	if (process.platform !== 'darwin') {
-		app.quit();
-	}
+	if (process.platform !== 'darwin') app.quit();
 });

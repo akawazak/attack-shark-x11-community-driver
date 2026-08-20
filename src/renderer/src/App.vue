@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, reactive, watch, toRaw } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { Settings, Zap, Info, ShieldAlert, Keyboard, MousePointer2, Menu, LayoutDashboard } from 'lucide-vue-next';
 
 import UserPreferences from './components/UserPreferences.vue';
@@ -12,16 +12,38 @@ import BatteryIndicator from './components/widgets/BatteryIndicator.vue';
 import ToastStack from './components/widgets/ToastStack.vue';
 import StatusMessage from './components/StatusMessage.vue';
 import BaseButton from './components/BaseButton.vue';
+import UpdatePanel from './components/UpdatePanel.vue';
+import ProjectSupport from './components/ProjectSupport.vue';
 import { useToast } from './composables/useToast';
+import { useLatestTask } from './composables/useLatestTask';
 import { useI18n } from 'vue-i18n';
 import packageInfo from '../../../package.json';
+import type { BatteryStatus, DetectedDevice, DeviceModel } from '../../shared/app-types.js';
+import {
+	compatibleModelsForProductId,
+	DEVICE_MODEL_LABELS,
+	R1_WIRED_PID,
+	selectPreferredDetectedDevice,
+	WIRELESS_PID,
+	X11_WIRED_PID,
+} from '../../shared/device-profiles.js';
+import { isDeviceMissingError, selectConnectionError } from '../../shared/connection-errors.js';
 
 const version = packageInfo.version;
 const isConnected = ref(false);
 const connectionMode = ref<'Adapter' | 'Wired' | null>(null);
-const deviceModel = ref<'X11' | 'X11SE' | 'R1'>('X11');
+const deviceModel = ref<DeviceModel>('X11');
+const deviceProtocol = ref<'X11' | 'R1'>('X11');
 const capabilities = ref<Record<string, boolean>>({});
-const batteryLevel = ref(-1);
+const batteryStatus = ref<BatteryStatus>({
+	level: -1,
+	state: 'unavailable',
+	updatedAt: null,
+	sampleCount: 0,
+	rejectedCount: 0,
+});
+const batteryLevel = computed(() => batteryStatus.value.level);
+const detectedDevices = ref<DetectedDevice[]>([]);
 const sidebarCollapsed = ref(false);
 const { toasts, removeToast } = useToast();
 const { t } = useI18n();
@@ -60,13 +82,24 @@ const lastMode = ref(0xfa60);
 const batteryPollInterval = ref<ReturnType<typeof setInterval> | null>(null);
 const isConnecting = ref(false);
 const isWindows = ref(false);
+let removeBatteryListener: (() => void) | null = null;
+let topologyCheckInProgress = false;
+
+const deviceDisplayName = computed(() => DEVICE_MODEL_LABELS[deviceModel.value]);
+
+const detectedModel = (device: DetectedDevice): DeviceModel => (device.productId === R1_WIRED_PID ? 'R1' : 'X11');
+
+const modelForDetectedDevice = (device: DetectedDevice): DeviceModel =>
+	device.compatibleModels.includes(deviceModel.value) ? deviceModel.value : detectedModel(device);
 
 const BATTERY_POLL_MS = 30_000; // Poll every 30 s as fallback
 
 const startBatteryPolling = () => {
 	if (batteryPollInterval.value) clearInterval(batteryPollInterval.value);
 	batteryPollInterval.value = setInterval(async () => {
-		if (isConnected.value) await updateBattery();
+		if (!isConnected.value) return;
+		await updateBattery();
+		await refreshDeviceTopology();
 	}, BATTERY_POLL_MS);
 };
 
@@ -83,8 +116,7 @@ const isPermissionError = computed(() => {
 });
 
 const isDeviceMissing = computed(() => {
-	const msg = connectionError.value.toLowerCase();
-	return msg.includes('not found') || msg.includes('no such device') || msg.includes('libusb_error');
+	return isDeviceMissingError(connectionError.value);
 });
 
 const windowsConnectionHint = computed(() => {
@@ -110,8 +142,13 @@ const connect = async (mode: number) => {
 	isConnecting.value = true;
 	try {
 		if (!window.api) throw new Error('IPC API not found.');
-		// Auto-detect model: wireless PID is shared, so we don't know model yet
-		const result = await window.api.connectDevice({ model: 'X11', mode });
+		const compatibleModels = compatibleModelsForProductId(mode);
+		const model: DeviceModel = compatibleModels.includes(deviceModel.value)
+			? deviceModel.value
+			: mode === R1_WIRED_PID
+				? 'R1'
+				: 'X11';
+		const result = await window.api.connectDevice({ model, mode });
 		if (result.success) {
 			await finalizeConnection(mode);
 		} else {
@@ -128,25 +165,30 @@ const connect = async (mode: number) => {
 
 const connectWired = async () => {
 	if (isConnecting.value) return;
-	lastMode.value = 0xfa55; // Try X11 wired first
 	connectionError.value = '';
 	isConnecting.value = true;
 	try {
 		if (!window.api) throw new Error('IPC API not found.');
-		// Try X11 wired first
-		let result = await window.api.connectDevice({ model: 'X11', mode: 0xfa55 });
-		if (!result.success) {
-			// Try R1 wired
-			result = await window.api.connectDevice({ model: 'R1', mode: 0xfa61 });
+		const detection = await window.api.detectDevice();
+		detectedDevices.value = detection.devices;
+		const detectedWired = detection.devices.find((device) => device.connectionMode === 'Wired');
+		const candidates: Array<{ model: DeviceModel; mode: number }> = detectedWired
+			? [{ model: modelForDetectedDevice(detectedWired), mode: detectedWired.productId }]
+			: [
+					{ model: 'X11', mode: X11_WIRED_PID },
+					{ model: 'R1', mode: R1_WIRED_PID },
+				];
+		const failures: string[] = [];
+		for (const candidate of candidates) {
+			lastMode.value = candidate.mode;
+			const result = await window.api.connectDevice(candidate);
 			if (result.success) {
-				await finalizeConnection(0xfa61);
+				await finalizeConnection(candidate.mode);
 				return;
 			}
-		} else {
-			await finalizeConnection(0xfa55);
-			return;
+			failures.push(result.error || 'Unknown error');
 		}
-		connectionError.value = result.error || 'Unknown error';
+		connectionError.value = selectConnectionError(failures);
 	} catch (err: unknown) {
 		const error = err instanceof Error ? err : new Error(String(err));
 		console.error('IPC Error:', error);
@@ -159,19 +201,100 @@ const connectWired = async () => {
 const finalizeConnection = async (mode: number) => {
 	isConnected.value = true;
 	connectionMode.value = mode === 0xfa55 || mode === 0xfa61 ? 'Wired' : 'Adapter';
+	batteryStatus.value = {
+		level: -1,
+		state: connectionMode.value === 'Wired' ? 'unavailable' : 'initializing',
+		updatedAt: null,
+		sampleCount: 0,
+		rejectedCount: 0,
+	};
 	const caps = await window.api.getDeviceCapabilities();
 	capabilities.value = caps;
-	const model = await window.api.getDeviceModel();
-	deviceModel.value = model as 'X11' | 'X11SE' | 'R1';
+	deviceModel.value = await window.api.getDeviceModel();
+	deviceProtocol.value = await window.api.getDeviceProtocol();
 	await updateBattery();
 	await fetchSummary();
 	await updateProfiles();
 	startBatteryPolling();
 };
 
+const refreshDeviceTopology = async () => {
+	if (!isConnected.value || isConnecting.value || topologyCheckInProgress) return;
+	topologyCheckInProgress = true;
+	try {
+		const detection = await window.api.detectDevice();
+		detectedDevices.value = detection.devices;
+		const preferred = selectPreferredDetectedDevice(
+			detection.devices,
+			deviceModel.value,
+			connectionMode.value ?? 'Adapter',
+		);
+
+		if (!preferred) {
+			await window.api.disconnectDevice();
+			stopBatteryPolling();
+			isConnected.value = false;
+			connectionMode.value = null;
+			deviceSummary.value = null;
+			capabilities.value = {};
+			batteryStatus.value = {
+				level: -1,
+				state: 'unavailable',
+				updatedAt: null,
+				sampleCount: 0,
+				rejectedCount: 0,
+			};
+			return;
+		}
+
+		if (preferred.connectionMode === connectionMode.value) return;
+		isConnecting.value = true;
+		connectionError.value = '';
+		const result = await window.api.connectDevice({
+			model: modelForDetectedDevice(preferred),
+			mode: preferred.productId,
+		});
+		if (result.success) await finalizeConnection(preferred.productId);
+		else connectionError.value = result.error || 'Unknown error';
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		connectionError.value = message;
+	} finally {
+		isConnecting.value = false;
+		topologyCheckInProgress = false;
+	}
+};
+
+const disconnect = async () => {
+	if (isConnecting.value) return;
+	isConnecting.value = true;
+	try {
+		await window.api.disconnectDevice();
+		stopBatteryPolling();
+		isConnected.value = false;
+		connectionMode.value = null;
+		deviceSummary.value = null;
+		capabilities.value = {};
+		batteryStatus.value = {
+			level: -1,
+			state: 'unavailable',
+			updatedAt: null,
+			sampleCount: 0,
+			rejectedCount: 0,
+		};
+		const detection = await window.api.detectDevice();
+		detectedDevices.value = detection.devices;
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		connectionError.value = message;
+	} finally {
+		isConnecting.value = false;
+	}
+};
+
 const retryConnection = async () => {
-	if (lastMode.value === 0xfa60) {
-		await connect(0xfa60);
+	if (lastMode.value === WIRELESS_PID) {
+		await connect(WIRELESS_PID);
 	} else {
 		await connectWired();
 	}
@@ -188,23 +311,22 @@ const fetchSummary = async () => {
 
 const updateBattery = async () => {
 	try {
-		const level = await window.api.getBattery();
-		batteryLevel.value = level;
+		batteryStatus.value = await window.api.getBatteryStatus();
 	} catch (err) {
-		console.warn('Battery update timed out or failed:', err);
-		batteryLevel.value = -1;
+		console.warn('Battery status refresh failed:', err);
 	}
 };
 
 onUnmounted(() => {
 	stopBatteryPolling();
+	removeBatteryListener?.();
 });
 
 onMounted(async () => {
 	isWindows.value = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent || '');
 	try {
-		window.api.onBatteryUpdated((level: number) => {
-			batteryLevel.value = level;
+		removeBatteryListener = window.api.onBatteryUpdated((status) => {
+			batteryStatus.value = status;
 		});
 
 		const settings = await window.api.getSettings();
@@ -227,10 +349,19 @@ onMounted(async () => {
 	// Auto-detect connected device on startup
 	try {
 		const detection = await window.api.detectDevice();
-		if (detection.detected && detection.mode != null && detection.model) {
-			const result = await window.api.connectDevice({ model: detection.model, mode: detection.mode });
+		detectedDevices.value = detection.devices;
+		const preferred = selectPreferredDetectedDevice(
+			detection.devices,
+			deviceModel.value,
+			connectionMode.value ?? 'Adapter',
+		);
+		if (preferred) {
+			const result = await window.api.connectDevice({
+				model: modelForDetectedDevice(preferred),
+				mode: preferred.productId,
+			});
 			if (result.success) {
-				await finalizeConnection(detection.mode);
+				await finalizeConnection(preferred.productId);
 			}
 		}
 	} catch {
@@ -238,17 +369,18 @@ onMounted(async () => {
 	}
 });
 
+const persistAppSettings = useLatestTask(async (patch: Parameters<typeof window.api.patchSettings>[0]) => {
+	await window.api.patchSettings(patch);
+});
+
 watch(
 	() => [activeTab.value, preferences.value, connectionMode.value, deviceModel.value],
-	async () => {
-		const settings = await window.api.getSettings();
-		await window.api.saveSettings({
-			...settings,
-			lastTab: activeTab.value,
-			connectionMode: connectionMode.value,
+	() => {
+		persistAppSettings({
+			lastTab: activeTab.value as 'overview' | 'preferences' | 'dpi' | 'macros' | 'device-info',
+			connectionMode: connectionMode.value ?? 'Adapter',
 			deviceModel: deviceModel.value,
-			theme: localStorage.getItem('theme') || 'dark',
-			preferences: JSON.parse(JSON.stringify(toRaw(preferences.value))),
+			preferences: structuredClone(preferences.value),
 		});
 	},
 	{ deep: true },
@@ -268,7 +400,7 @@ watch(
 			<div class="p-6 flex items-center justify-between" :class="sidebarCollapsed ? 'flex-col gap-4' : ''">
 				<template v-if="!sidebarCollapsed">
 					<h1 class="text-xl font-bold flex items-center gap-2 text-shark-primary whitespace-nowrap">
-						{{ $t('sidebar.deviceName') }}
+						{{ deviceDisplayName }}
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
@@ -385,7 +517,13 @@ watch(
 					<ThemeToggle />
 				</div>
 				<div v-if="isConnected">
-					<BatteryIndicator :level="batteryLevel" :connected="isConnected" :mode="connectionMode" />
+					<BatteryIndicator :status="batteryStatus" :connected="isConnected" :mode="connectionMode" />
+					<button
+						class="mt-2 text-xs text-[var(--sidebar-text)] hover:text-shark-primary"
+						@click="disconnect"
+					>
+						{{ $t('connection.changeDevice') }}
+					</button>
 				</div>
 				<div v-else class="text-xs text-[var(--sidebar-text-muted)] italic">
 					{{ $t('connection.disconnected') }}
@@ -414,17 +552,19 @@ watch(
 					{{ $t('connection.description') }}
 				</p>
 
-				<!-- Single connection mode selector (model auto-detected after connect) -->
+				<!-- Connection mode selector -->
 				<div class="grid grid-cols-2 gap-4 w-full max-w-sm">
 					<button
-						@click="connect(0xfa60)"
+						@click="connect(WIRELESS_PID)"
 						:disabled="isConnecting"
 						class="bg-[var(--connection-card-bg)] hover:bg-[var(--connection-card-hover)] disabled:opacity-60 disabled:cursor-wait p-5 rounded-xl border border-[var(--connection-card-border)] group flex flex-col items-center"
 						aria-label="Connect via 2.4GHz wireless adapter"
 					>
 						<Zap class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary" />
 						<span class="block font-semibold text-[var(--text-primary)]">{{
-							isConnecting && lastMode === 0xfa60 ? $t('connection.connecting') : $t('connection.adapter')
+							isConnecting && lastMode === WIRELESS_PID
+								? $t('connection.connecting')
+								: $t('connection.adapter')
 						}}</span>
 						<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
 							$t('connection.adapterDesc')
@@ -440,7 +580,9 @@ watch(
 							class="w-8 h-8 mb-3 text-[var(--connection-card-text)] group-hover:text-shark-primary"
 						/>
 						<span class="block font-semibold text-[var(--text-primary)]">{{
-							isConnecting && lastMode !== 0xfa60 ? $t('connection.connecting') : $t('connection.wired')
+							isConnecting && lastMode !== WIRELESS_PID
+								? $t('connection.connecting')
+								: $t('connection.wired')
 						}}</span>
 						<span class="block text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{{
 							$t('connection.wiredDesc')
@@ -499,7 +641,19 @@ watch(
 						>
 							<h3 class="text-sm text-[var(--text-secondary)] mb-1">{{ $t('overview.battery') }}</h3>
 							<p class="text-2xl font-bold text-[var(--text-primary)]">
-								{{ batteryLevel >= 0 ? `${batteryLevel}%` : $t('overview.batteryUnknown') }}
+								{{
+									connectionMode === 'Wired'
+										? $t('overview.usbConnected')
+										: batteryStatus.state === 'initializing'
+											? batteryLevel >= 0
+												? `${batteryLevel}% · ${$t('overview.batteryStabilizing')}`
+												: $t('overview.batteryStabilizing')
+											: batteryStatus.state === 'stale' && batteryLevel >= 0
+												? `${batteryLevel}% · ${$t('overview.batteryStale')}`
+												: batteryLevel >= 0
+													? `${batteryLevel}%`
+													: $t('overview.batteryUnknown')
+								}}
 							</p>
 						</div>
 						<div
@@ -526,9 +680,11 @@ watch(
 							class="bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-card)] shadow-md hover:shadow-xl"
 						>
 							<h3 class="text-sm text-[var(--text-secondary)] mb-1">{{ $t('overview.device') }}</h3>
-							<p class="text-2xl font-bold text-[var(--text-primary)]">Attack Shark {{ deviceModel }}</p>
+							<p class="text-2xl font-bold text-[var(--text-primary)]">{{ deviceDisplayName }}</p>
 						</div>
 					</div>
+					<UpdatePanel />
+					<ProjectSupport />
 				</div>
 
 				<!-- Preferences Content -->
@@ -536,19 +692,19 @@ watch(
 					<UserPreferences
 						v-model="preferences"
 						:isConnected="isConnected"
-						:deviceModel="deviceModel"
-						@reset-complete="isConnected = false"
+						:deviceProtocol="deviceProtocol"
+						@reset-complete="disconnect"
 					/>
 				</div>
 
 				<!-- DPI Content -->
 				<div v-show="activeTab === 'dpi'">
-					<DpiSettings :isConnected="isConnected" :deviceModel="deviceModel" />
+					<DpiSettings :isConnected="isConnected" :deviceProtocol="deviceProtocol" />
 				</div>
 
 				<!-- Macros Content -->
 				<div v-show="activeTab === 'macros'">
-					<MacroSettings :isConnected="isConnected" />
+					<MacroSettings :isConnected="isConnected" :deviceProtocol="deviceProtocol" />
 				</div>
 
 				<!-- Device Info Content -->

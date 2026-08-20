@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Keyboard } from 'lucide-vue-next';
 import { macroTemplates, MacroName, type MacroTuple } from '../../../shared/macro-templates.js';
 import BaseSelect from './BaseSelect.vue';
+import BaseButton from './BaseButton.vue';
 import Card from './Card.vue';
 import StatusMessage from './StatusMessage.vue';
 import CustomMacroEditor from './CustomMacroEditor.vue';
-import { useLatestTask } from '../composables/useLatestTask';
 
 const props = defineProps<{
 	isConnected: boolean;
-	deviceModel?: 'X11' | 'X11SE' | 'R1';
+	deviceProtocol?: 'X11' | 'R1';
 }>();
 
 const { t } = useI18n();
@@ -61,7 +61,6 @@ const applyMacro = async (template: MacroName, button: number) => {
 
 		await window.api.setMacro(macroConfig);
 		statusMessage.value = t('macros.macroAssigned');
-		setTimeout(() => (statusMessage.value = ''), 3000);
 	} catch (err: unknown) {
 		const error = err instanceof Error ? err : new Error(String(err));
 		statusMessage.value = `${t('macros.errorPrefix')}${error.message}`;
@@ -69,16 +68,10 @@ const applyMacro = async (template: MacroName, button: number) => {
 		isSaving.value = false;
 	}
 };
-
-const queueMacro = useLatestTask(async ({ template, button }: { template: MacroName; button: number }) => {
-	await applyMacro(template, button);
-});
-
-watch([selectedTemplate, selectedButton], ([template, button]) => queueMacro({ template, button }));
 </script>
 
 <template>
-	<div v-if="deviceModel === 'R1'" class="flex items-center justify-center h-64">
+	<div v-if="deviceProtocol === 'R1'" class="flex items-center justify-center h-64">
 		<p class="text-[var(--text-secondary)] text-lg">{{ $t('capabilities.notSupported') }}</p>
 	</div>
 	<div v-else class="space-y-8">
@@ -143,6 +136,15 @@ watch([selectedTemplate, selectedButton], ([template, button]) => queueMacro({ t
 							</option>
 						</BaseSelect>
 					</div>
+				</div>
+				<div class="flex justify-end mt-6">
+					<BaseButton
+						@click="applyMacro(selectedTemplate, selectedButton)"
+						variant="green"
+						:disabled="!isConnected || isSaving"
+					>
+						{{ isSaving ? $t('macros.applying') : $t('macros.apply') }}
+					</BaseButton>
 				</div>
 			</Card>
 		</div>

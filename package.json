@@ -1,7 +1,7 @@
 {
 	"name": "attack-shark-x11-driver",
-	"version": "1.4.5",
-	"description": "A TypeScript driver for the Attack Shark X11 gaming mouse, supporting Linux and other platforms via Node.js/Bun and USB HID.",
+	"version": "1.5.0",
+	"description": "A Windows and Linux desktop configuration app for Attack Shark X11-compatible gaming mice.",
 	"desktopName": "attack-shark-x11-electron",
 	"author": {
 		"name": "akawazak",
@@ -40,13 +40,13 @@
 		"hid",
 		"typescript"
 	],
+	"packageManager": "bun@1.3.14",
 	"main": "./out/main/index.js",
 	"scripts": {
-		"dev": "npm run copy-driver-inf && electron-vite dev",
-		"build": "npm run copy-driver-inf && electron-vite build",
+		"dev": "electron-vite dev",
+		"build": "node scripts/clean-output.mjs out && electron-vite build",
 		"preview": "electron-vite preview",
-		"package": "npm run copy-driver-inf && electron-vite build && electron-builder",
-		"copy-driver-inf": "node scripts/copy-driver-inf.cjs",
+		"package": "node scripts/clean-output.mjs out && electron-vite build && electron-builder",
 		"lint": "bunx eslint . --ext .ts --cache --cache-strategy content",
 		"lint:fix": "bunx eslint . --ext .ts --fix --cache --cache-strategy content",
 		"format": "bunx prettier --check . --cache --cache-strategy content",
@@ -73,22 +73,25 @@
 		"files": [
 			"out/**/*",
 			"package.json",
-			"drivers/**/*",
 			"!node_modules/usb/target/**/*",
 			"!node_modules/node-hid/build/Release/**/*.iobj",
 			"!node_modules/node-hid/build/Release/**/*.ipdb",
 			"!node_modules/node-hid/build/Release/**/*.lib",
 			"!node_modules/node-hid/build/Release/**/*.pdb",
-			"!node_modules/node-hid/build/Release/**/*.exp"
-		],
-		"extraResources": [
-			{
-				"from": "drivers",
-				"to": "drivers",
-				"filter": [
-					"**/*.inf"
-				]
-			}
+			"!node_modules/node-hid/build/Release/**/*.exp",
+			"!node_modules/node-hid/build/Release/obj/**/*",
+			"!node_modules/node-hid/build/*.vcxproj*",
+			"!node_modules/node-hid/hidapi/**/*",
+			"!node_modules/node-hid/prebuilds/**/*",
+			"!node_modules/node-hid/src/**/*",
+			"!node_modules/usb/.cargo/**/*",
+			"!node_modules/usb/src/**/*",
+			"!node_modules/usb/tsc/**/*",
+			"!node_modules/usb/dist/**/*",
+			"!node_modules/usb/Cargo.*",
+			"!node_modules/usb/build.rs",
+			"!node_modules/usb/tsconfig.json",
+			"!node_modules/usb/typedoc.json"
 		],
 		"nodeGypRebuild": false,
 		"nativeRebuilder": "legacy",
@@ -99,9 +102,26 @@
 			],
 			"category": "Settings",
 			"icon": "assets/cs-mouse.svg",
+			"executableName": "attack-shark-x11-electron",
+			"extraResources": [
+				{
+					"from": "assets/70-attack-shark-x11.rules",
+					"to": "70-attack-shark-x11.rules"
+				}
+			],
+			"files": [
+				"!node_modules/node-hid/**/*"
+			],
 			"syncDesktopName": true
 		},
+		"deb": {
+			"afterInstall": "scripts/deb-after-install.sh",
+			"afterRemove": "scripts/deb-after-remove.sh"
+		},
 		"win": {
+			"files": [
+				"!node_modules/usb/**/*"
+			],
 			"target": [
 				{
 					"target": "nsis",
@@ -138,32 +158,39 @@
 	},
 	"dependencies": {
 		"@electron-toolkit/utils": "^4.0.0",
-		"electron-updater": "^6.8.9",
 		"lucide-vue-next": "^1.0.0",
-		"node-hid": "^3.3.0",
-		"usb": "github:dressedinblack5/node-usb-rs",
-		"vue": "^3.5.38",
-		"vue-i18n": "^11.4.5"
+		"node-hid": "^3.4.0",
+		"usb": "github:dressedinblack5/node-usb-rs#1b58772b7be558a12bd23616d20fcc20dab74436",
+		"vue": "^3.5.41",
+		"vue-i18n": "^11.4.8"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
-		"@tailwindcss/vite": "^4.3.1",
+		"@tailwindcss/vite": "^4.3.3",
 		"@types/bun": "^1.3.14",
-		"@types/node": "^25.9.3",
-		"@vitejs/plugin-vue": "^6.0.7",
-		"electron": "^42.4.0",
-		"electron-builder": "^26.15.3",
+		"@types/node": "^25.9.5",
+		"@vitejs/plugin-vue": "^6.0.8",
+		"app-builder-lib": "26.15.7",
+		"brace-expansion": "1.1.18",
+		"builder-util-runtime": "9.7.0",
+		"electron": "42.9.2",
+		"electron-builder": "26.15.7",
 		"electron-vite": "^5.0.0",
-		"eslint": "^10.5.0",
+		"eslint": "^10.8.1",
 		"eslint-config-prettier": "^10.1.8",
-		"globals": "^17.6.0",
+		"fast-uri": "3.1.5",
+		"form-data": "4.0.6",
+		"globals": "^17.11.0",
 		"husky": "^9.1.7",
-		"lint-staged": "^17.0.7",
+		"js-yaml": "4.3.1",
+		"lint-staged": "^17.3.0",
 		"prettier": "3.8.4",
-		"tailwindcss": "^4.3.1",
+		"tar": "7.5.22",
+		"tailwindcss": "^4.3.3",
 		"typescript": "^6.0.3",
-		"typescript-eslint": "^8.61.0",
-		"vite": "^8.0.16"
+		"typescript-eslint": "^8.67.0",
+		"undici": "7.29.0",
+		"vite": "7.3.6"
 	},
 	"trustedDependencies": [
 		"usb"

@@ -2,165 +2,110 @@
 
 ![Attack Shark X11 Gaming Mouse](assets/shark-x11-electron.png)
 
-[![npm version](https://img.shields.io/npm/v/attack-shark-x11-driver.svg)](https://www.npmjs.com/package/attack-shark-x11-driver)
-[![license](https://img.shields.io/npm/l/attack-shark-x11-driver.svg)](https://github.com/HarukaYamamoto0/attack-shark-x11-driver/blob/main/LICENSE)
-[![Bun](https://img.shields.io/badge/Bun-%23000000.svg?style=flat&logo=bun&logoColor=white)](https://bun.sh)
+[![license](https://img.shields.io/github/license/akawazak/attack-shark-x11-community-driver)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/akawazak/attack-shark-x11-community-driver?style=flat&logo=github&label=stars)](https://github.com/akawazak/attack-shark-x11-community-driver/stargazers)
 
-A cross-platform desktop app to configure your **Attack Shark X11** gaming mouse - DPI, macros, lighting, polling rate, battery status, and more. Built with Electron + Vue 3.
+A community desktop app for configuring compatible gaming mice on Windows and Linux. It controls DPI stages, polling rate, lighting, sleep behavior, button mappings, macros, and wireless battery status.
 
-Community-maintained fork focused on safe Windows releases, portable builds, auto-updating installer builds, and continued Linux support. This project builds on the original reverse-engineering and GUI work credited below.
+## Install
 
----
+Download Windows and Linux builds from the [official Releases page](https://github.com/akawazak/attack-shark-x11-community-driver/releases).
 
-## Quick Install
+### Windows
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/akawazak/attack-shark-x11-community-driver/main/install.sh | bash
-```
+- Use the setup executable for a normal installation.
+- Use the portable executable when you do not want to install the app.
+- No replacement USB driver or administrator access is required. Close another mouse-configuration app if it is already using the device.
 
-The script auto-detects your distro:
+Windows releases may be unsigned unless the project has a code-signing certificate configured. Compare the downloaded file against `SHA256SUMS` on the release before running it.
 
-- **Arch** -> installs from AUR
-- **Ubuntu / Debian** -> downloads the latest `.deb`
-- **any other Linux** -> downloads the AppImage + sets up a `.desktop` entry
+### Linux
 
-Manual downloads are also available on the [Releases page](https://github.com/akawazak/attack-shark-x11-community-driver/releases).
+The `.deb`, AppImage installer, and AUR package install a restricted udev rule (`0660` with `uaccess`) so the current desktop user can access supported devices without running the app as root.
 
----
-
-## Features
-
-**Device control** - DPI stages, button remapping, macros with timing, lighting (mode/speed/color), polling rate (125-1000 Hz), battery monitoring, device reset.
-
-**Supported models** - Attack Shark **X11** and **R1** (auto-detected on startup).
-
-**App features** - Dark/Light/Cappuccino themes, i18n (EN/ES), auto-save, full config persistence across restarts, type-safe settings loading, auto-detect connected device on launch.
-
-**Platform** - Linux, macOS, Windows. 121+ tests across 11 files.
-
-**USB Stack** - Fully migrated from `usb` v2 (node-usb, synchronous Transfer API) to `usb` v3 (node-usb-rs, async WebUSB API). Battery monitoring uses interrupt endpoint polling via `nativeTransferIn`. Upstream bug fix submitted (node-usb-rs#4).
-
----
-
-## Linux Setup (udev)
-
-The mouse needs a udev rule so the app can access it without `sudo`:
+To use the verified installer, download it first and check it before running it:
 
 ```bash
-# 1. Create the rule file
-sudo tee /etc/udev/rules.d/99-attack-shark-x11.rules > /dev/null <<'UDEV'
-SUBSYSTEM=="usb", ATTR{idVendor}=="1d57", ATTR{idProduct}=="fa60", MODE="0666", GROUP="plugdev"
-SUBSYSTEM=="usb", ATTR{idVendor}=="1d57", ATTR{idProduct}=="fa55", MODE="0666", GROUP="plugdev"
-SUBSYSTEM=="usb", ATTR{idVendor}=="1d57", ATTR{idProduct}=="fa61", MODE="0666", GROUP="plugdev"
-UDEV
-
-# 2. Reload rules
-sudo udevadm control --reload-rules && sudo udevadm trigger
+curl --proto '=https' --tlsv1.2 -fLO https://github.com/akawazak/attack-shark-x11-community-driver/releases/latest/download/install.sh
+curl --proto '=https' --tlsv1.2 -fLO https://github.com/akawazak/attack-shark-x11-community-driver/releases/latest/download/SHA256SUMS
+grep ' install.sh$' SHA256SUMS | sha256sum --check
+bash install.sh
 ```
 
-## Windows Setup (one-time driver install)
+The installer verifies every release asset against `SHA256SUMS` before installing it. Arch users are shown their AUR helper's normal review and confirmation flow.
 
-On Windows the mouse is bound to the in-box HID class driver, which does not
-expose libusb-style control transfers. The app needs the in-box Microsoft
-**WinUSB** driver bound to the vendor/control interface only: VID `1D57`, PIDs
-`FA55` / `FA60` / `FA61`, interface `MI_02`. The keyboard and mouse HID
-interfaces stay on the normal Windows HID drivers.
+The default rule uses the active desktop session's `uaccess` ACL. If that is unavailable on a particular login manager, the verified installer has an explicit restricted-group fallback:
 
-**The app handles this for you** — if the mouse isn't found, the connection
-screen will show an **Install USB Driver** button. Click it, accept the UAC
-prompt, and the app will run `pnputil /add-driver` against the bundled INF.
-After it succeeds, replug the mouse once and you're done — the install is
-one-time per machine.
-
-For release builds, Windows requires this INF to be shipped as a signed driver
-package with a catalog (`.cat`). The INF itself uses only Microsoft's in-box
-WinUSB driver; the app does not bundle a third-party kernel driver. Until the
-driver package is signed through Microsoft's driver signing flow, Windows will
-reject it with a missing digital signature error.
-
-If you'd rather do it manually (e.g. you don't want to grant the app admin):
-
-```powershell
-# Run from an elevated PowerShell, pointing at the INF bundled with the app.
-pnputil /add-driver "$env:LOCALAPPDATA\Programs\Attack Shark X11 Driver\resources\drivers\attack-shark-x11-winusb.inf" /install
-
-# Then unplug and replug the mouse.
+```bash
+bash install.sh --group-access
 ```
 
----
+This creates the dedicated `attackshark` group, adds only the current desktop user, and keeps device permissions at `0660`. Log out completely and sign back in before reconnecting the mouse. The installer never enables this fallback silently.
 
-## Build From Source
+## Supported hardware
 
-Prerequisite: [Bun](https://bun.sh/)
+| Device | Connection | Protocol support |
+| --- | --- | --- |
+| Attack Shark X11 / X11 SE | USB cable and 2.4 GHz receiver | X11 |
+| Attack Shark R1 | USB cable and compatible 2.4 GHz receiver | R1 or X11-compatible receiver |
+| VXE R1 SE+ | X11-compatible 2.4 GHz receiver | X11-compatible |
+
+The app connects automatically. Wired X11-family and R1 devices have distinct product IDs, so their protocol is selected directly. The wireless receiver uses the shared USB ID `1d57:fa60`; because that ID does not reveal the marketing name, the app uses the established X11-compatible wireless protocol instead of guessing a model from branding.
+
+Known product IDs are `fa60` (2.4 GHz receiver), `fa55` (X11-family wired), and `fa61` (R1 wired). Bluetooth is not supported by this app.
+
+## What is immediate and what is delayed
+
+Browsing tabs, opening the app from the taskbar, editing fields, loading profiles, changing theme/language, checking battery status, and saving local app settings are immediate and do not enter the USB safety queue.
+
+Only an explicit **Apply to mouse**, macro write, or device reset writes mouse memory. Actual USB writes are serialized and keep a 500 ms safety interval between reports. A multi-report operation can therefore take longer while the rest of the app remains responsive.
+
+## Battery status
+
+Wireless battery reports can occasionally contain abrupt false readings. The app:
+
+- shows the first valid reading as provisional and confirms the median after three reports;
+- requires three matching reports before accepting an increase or drop greater than five percentage points;
+- marks old values as stale and keeps recent report decisions in Device Info.
+
+Battery reporting is unavailable in wired mode because that connection does not expose the wireless receiver's battery stream. See [the protocol notes](docs/battery-status.md) for details.
+
+If the receiver stays plugged in while the mouse is connected by USB, the wired identity takes priority and the app periodically checks for cable connection changes. Wired mode is shown as USB connected; the app does not invent a charging percentage that the device protocol does not provide.
+
+## Updates
+
+Packaged builds automatically check the official GitHub Releases metadata after startup. When an update exists, the app opens the exact official release page so you can verify `SHA256SUMS` and install it deliberately.
+
+The app does not silently download or execute unsigned update files. Fully automatic installation should only be enabled after Windows and Linux release signing is configured.
+
+## Build from source
+
+Install [Bun 1.3.14](https://bun.sh/), then:
 
 ```bash
 git clone https://github.com/akawazak/attack-shark-x11-community-driver.git
 cd attack-shark-x11-community-driver
-bun install
-bun run package     # outputs to ./dist
+bun install --frozen-lockfile
+bun run format
+bun run lint
+bun run typecheck
+bun test
+bun run package
 ```
 
-```bash
-bun test            # 121+ tests
-```
-
-### Windows Builds
-
-`bun run package` builds both Windows targets when run on Windows:
-
-- `nsis` installer: supports Electron auto-updates through GitHub Releases metadata.
-- `portable` executable: useful as a no-install app, but Electron Builder does not support auto-updating this target directly.
-
-Auto-updates read from this repository's GitHub Releases via `build.publish` in `package.json`.
-
----
-
-## Device Specs
-
-| | |
-|---|---|
-| **Sensor** | PixArt PAW3311 |
-| **Max DPI** | 22,000 (6 levels) |
-| **Polling Rate** | 125-1000 Hz |
-| **Weight** | ~63g |
-| **Battery** | Up to 65 hrs / 2-3 hr charge |
-| **Connectivity** | Wired + 2.4GHz wireless (Bluetooth untested) |
-| **Vendor / Product** | `0x1d57` / `0xfa60` (wireless), `0xfa55` (X11 wired), `0xfa61` (R1 wired) |
-
----
-
-## Supported Hardware
-
-| Device | Mode | Status |
-|---|---|---|
-| Attack Shark X11 | Wired | Supported |
-| Attack Shark X11 | 2.4GHz wireless | Supported |
-| Attack Shark X11 | Bluetooth | Not tested |
-| Attack Shark R1 | Wired | Supported |
-| Attack Shark R1 | 2.4GHz wireless | Supported (via X11 compatibility) |
-| Attack Shark **X11SE** | All modes | Likely compatible (same chipset, untested) |
-
----
+Packages are written to `dist/`. Release CI verifies the exact tag on Windows and Linux, publishes SHA-256 checksums, and creates GitHub build-provenance attestations.
 
 ## Contributing
 
-Reverse-engineering effort. PRs welcome for protocol docs, features, or hardware testing. See `docs/` for packet analysis.
+Protocol work can write persistent settings to a physical device. Keep USB reads separate from writes, validate report fields, serialize multi-report operations, and test with a known-compatible mouse before publishing. Pull requests and hardware reports are welcome.
 
----
-
-## License
-
-MIT. Original work and fork contributions remain credited below.
-
-*Not affiliated with Attack Shark. Use at your own risk.*
-
----
+If the driver works for your mouse, [starring the repository](https://github.com/akawazak/attack-shark-x11-community-driver) helps other owners find it.
 
 ## Credits
 
-Special thanks to the reverse-engineering community whose work made this possible:
+- [HarukaYamamoto0](https://github.com/HarukaYamamoto0) — original X11 driver and protocol research.
+- [dressedinblack5](https://github.com/dressedinblack5) — Electron/Vue app, packaging, and the maintained `node-usb-rs` fork.
+- [xb-bx](https://github.com/xb-bx) — Attack Shark R1 protocol work and hardware testing.
+- [akawazak](https://github.com/akawazak) — community maintenance, Windows compatibility, battery work, and releases.
 
-- **[HarukaYamamoto0](https://github.com/HarukaYamamoto0)** - for the original X11 driver, detailed protocol analysis, and firmware research that forms the foundation of this project.
-- **[dressedinblack5](https://github.com/dressedinblack5)** - for the Electron/Vue desktop app, extended X11 functionality, packaging work, and the maintained `node-usb-rs` fork used by this app.
-- **[xb-bx](https://github.com/xb-bx)** - for the Attack Shark R1 driver, protocol documentation, and hardware testing that enabled R1 support.
-- **[akawazak](https://github.com/akawazak)** - for community maintenance, Windows packaging, portable builds, auto-update setup, and release stewardship.
+Licensed under [MIT](LICENSE). This project is not affiliated with Attack Shark or VXE.

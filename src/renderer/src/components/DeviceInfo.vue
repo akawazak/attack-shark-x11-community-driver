@@ -5,6 +5,7 @@ import { HardDrive, Info } from 'lucide-vue-next';
 import BaseButton from './BaseButton.vue';
 import Card from './Card.vue';
 import StatusMessage from './StatusMessage.vue';
+import type { BatteryDiagnostics } from '../../../shared/app-types.js';
 
 const { t } = useI18n();
 
@@ -24,6 +25,7 @@ interface DeviceInfoData {
 }
 
 const deviceInfo = ref<DeviceInfoData | null>(null);
+const batteryDiagnostics = ref<BatteryDiagnostics | null>(null);
 const isLoading = ref(false);
 const errorMessage = ref('');
 
@@ -33,7 +35,12 @@ const fetchDeviceInfo = async () => {
 	errorMessage.value = '';
 
 	try {
-		deviceInfo.value = await window.api.getDeviceInfo();
+		const [info, diagnostics] = await Promise.all([
+			window.api.getDeviceInfo() as Promise<DeviceInfoData>,
+			window.api.getBatteryDiagnostics(),
+		]);
+		deviceInfo.value = info;
+		batteryDiagnostics.value = diagnostics;
 	} catch (err: unknown) {
 		const error = err instanceof Error ? err : new Error(String(err));
 		errorMessage.value = `${t('deviceInfo.fetchError')}${error.message}`;
@@ -130,6 +137,46 @@ onMounted(() => {
 						</p>
 						<p class="text-lg font-medium text-[var(--text-primary)] font-mono break-all">
 							{{ deviceInfo.serialNumber }}
+						</p>
+					</div>
+				</div>
+			</Card>
+
+			<Card v-if="batteryDiagnostics" class="md:col-span-2">
+				<template #title>{{ $t('deviceInfo.batteryDiagnostics') }}</template>
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+					<div>
+						<p class="text-xs text-[var(--text-tertiary)] mb-1">{{ $t('deviceInfo.batteryState') }}</p>
+						<p class="font-medium text-[var(--text-primary)]">{{ batteryDiagnostics.status.state }}</p>
+					</div>
+					<div>
+						<p class="text-xs text-[var(--text-tertiary)] mb-1">{{ $t('deviceInfo.batterySamples') }}</p>
+						<p class="font-medium text-[var(--text-primary)]">
+							{{ batteryDiagnostics.status.sampleCount }}
+						</p>
+					</div>
+					<div>
+						<p class="text-xs text-[var(--text-tertiary)] mb-1">{{ $t('deviceInfo.batteryFiltered') }}</p>
+						<p class="font-medium text-[var(--text-primary)]">
+							{{ batteryDiagnostics.status.rejectedCount }}
+						</p>
+					</div>
+					<div>
+						<p class="text-xs text-[var(--text-tertiary)] mb-1">
+							{{ $t('deviceInfo.batteryLastUpdated') }}
+						</p>
+						<p class="font-medium text-[var(--text-primary)]">
+							{{
+								batteryDiagnostics.status.updatedAt
+									? new Date(batteryDiagnostics.status.updatedAt).toLocaleTimeString()
+									: $t('deviceInfo.never')
+							}}
+						</p>
+					</div>
+					<div>
+						<p class="text-xs text-[var(--text-tertiary)] mb-1">{{ $t('deviceInfo.batteryLastReport') }}</p>
+						<p class="font-medium text-[var(--text-primary)] font-mono text-sm break-all">
+							{{ batteryDiagnostics.samples.at(-1)?.reason ?? $t('deviceInfo.never') }}
 						</p>
 					</div>
 				</div>

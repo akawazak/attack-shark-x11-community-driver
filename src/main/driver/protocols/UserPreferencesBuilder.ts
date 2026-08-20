@@ -181,6 +181,7 @@ export class UserPreferencesBuilder implements BaseProtocolBuilder {
 	 * @return {this} The instance of the current object for method chaining.
 	 */
 	setLightMode(mode: LightMode): this {
+		if (!Object.values(LightMode).includes(mode)) throw new ParamsError('lightMode', 'Unsupported light mode');
 		this.buffer[3] = mode;
 		this.updateIndex11();
 		return this;
@@ -191,7 +192,7 @@ export class UserPreferencesBuilder implements BaseProtocolBuilder {
 	 * @param minutes Time in minutes (1-60)
 	 */
 	setDeepSleep(minutes: DeepSleepTime): this {
-		if (minutes < 1 || minutes > 60) {
+		if (!Number.isInteger(minutes) || minutes < 1 || minutes > 60) {
 			throw new ParamsError('deepSleepTime', 'the minutes of deep sleep should be in the range of 1 to 60');
 		}
 		this.deepSleepMinutes = minutes;
@@ -205,7 +206,7 @@ export class UserPreferencesBuilder implements BaseProtocolBuilder {
 	 * @param speed Speed level (1-5, where 5 is fastest and 1 is slowest)
 	 */
 	setLedSpeed(speed: LedSpeed): this {
-		if (speed < 1 || speed > 5) {
+		if (!Number.isInteger(speed) || speed < 1 || speed > 5) {
 			throw new ParamsError('ledSpeed', 'LED speed must be between 1 and 5');
 		}
 		this.ledSpeed = speed;
@@ -220,6 +221,9 @@ export class UserPreferencesBuilder implements BaseProtocolBuilder {
 	 * @return {this} The current instance, allowing for method chaining.
 	 */
 	setRgb(rgb: RGB): this {
+		if (!rgb || ![rgb.r, rgb.g, rgb.b].every((value) => Number.isInteger(value) && value >= 0 && value <= 255)) {
+			throw new ParamsError('rgb', 'RGB channels must be integer bytes from 0 to 255');
+		}
 		this.buffer[6] = rgb.r & 0xff;
 		this.buffer[7] = rgb.g & 0xff;
 		this.buffer[8] = rgb.b & 0xff;
@@ -232,7 +236,7 @@ export class UserPreferencesBuilder implements BaseProtocolBuilder {
 	 * @param minutes Time in minutes (0.5 to 30, step example: 0.5, 1, 1.5, 2.5, etc.)
 	 */
 	setSleep(minutes: SleepTime): this {
-		if (minutes < 0.5 || minutes > 30) {
+		if (!Number.isFinite(minutes) || minutes < 0.5 || minutes > 30 || minutes * 2 !== Math.round(minutes * 2)) {
 			throw new ParamsError('sleepTime', 'Invalid sleep value (0.5–30 min)');
 		}
 		this.buffer[9] = Math.round(minutes * 2);
@@ -244,7 +248,7 @@ export class UserPreferencesBuilder implements BaseProtocolBuilder {
 	 * @param ms Time in milliseconds (4-50ms, must be even)
 	 */
 	setKeyResponse(ms: KeyResponse): this {
-		if (ms < 4 || ms > 50 || ms % 2 !== 0) {
+		if (!Number.isInteger(ms) || ms < 4 || ms > 50 || ms % 2 !== 0) {
 			throw new ParamsError('keyResponse', 'Invalid value (use 4–50ms, step 2)');
 		}
 

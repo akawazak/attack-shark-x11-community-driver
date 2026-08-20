@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.5.0] - Unreleased
+
+### Added
+
+- Automatic startup connection using exact wired product IDs and the established X11-compatible path for shared wireless receivers, including compatible VXE R1 SE+ hardware.
+- Safe update notifications that check official GitHub release metadata and open the exact release page without silently executing unsigned assets.
+- Battery state, freshness, sample counts, filtered-report counts, and recent decisions in Device Info.
+- Windows and Linux release verification, SHA-256 release manifests, and GitHub build-provenance attestations.
+
+### Changed
+
+- Keep every renderer interaction and local settings update outside the USB write queue; the 500 ms safety interval now applies only to actual mouse-memory reports.
+- Require an explicit Apply action for DPI, preferences, polling rate, built-in macros, and custom macros.
+- Stabilize the first battery value with a three-report median and confirm large rises or drops before display.
+- Use the built-in Windows HID transport with asynchronous reads/writes instead of installing an unsigned replacement driver.
+- Restrict Linux device permissions to `0660` with `uaccess` and verify installer downloads against release checksums.
+- Consolidate normal GitHub Actions into one Windows/Linux CI workflow with a blocking dependency audit.
+- Validate and atomically serialize settings, profiles, device selections, IPC fields, and multi-report mouse operations.
+
+### Fixed
+
+- Prevent tab changes, taskbar restore, field edits, and profile browsing from waiting on the mouse-memory cooldown.
+- Prevent battery noise such as `91 → 100 → 91` from flickering in the UI.
+- Keep unchanged valid battery reports fresh and accept a legitimate large increase after three confirmations.
+- Migrate the exact legacy world-writable Linux rule during AppImage, Debian, and AUR upgrades, with an explicit restricted-group fallback for desktops without working `uaccess` ACLs.
+- Detect the attached wired product ID directly and preserve a permission error instead of replacing it with a fallback PID-not-found message.
+- Prevent oversized macros, malformed report fields, overlapping resets, and hung Windows HID writes.
+- Remove the incomplete unsigned WinUSB driver installer and mutable/unverified release installation paths.
+
 ## [1.4.5] - 2026-07-20
 
 ### Fixed

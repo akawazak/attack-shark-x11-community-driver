@@ -1,45 +1,33 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-The following versions of Attack Shark X11 Electron are currently supported with security updates:
+Security fixes are provided for the latest stable release. Upgrade to the newest patch before reporting a problem that may already be fixed.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.2.x   | :white_check_mark: |
-| < 1.2.0 | :x:                |
+## Report a vulnerability
 
-## Reporting a Vulnerability
+Do not publish exploit details in a normal issue.
 
-If you discover a security vulnerability in this project, please report it responsibly:
+Use **Security → Report a vulnerability** in this GitHub repository when private vulnerability reporting is available. If it is unavailable, open a minimal issue asking the repository owner for a private contact channel without including sensitive details.
 
-1. **Do not** open a public issue on GitHub
-2. Email the maintainer directly at: leonvargas4991@gmail.com
-3. Include a detailed description of the vulnerability and steps to reproduce
-4. Allow reasonable time for the issue to be addressed before disclosing publicly
+Include the affected version and operating system, the security impact, reproduction steps, and any proposed mitigation. Allow the maintainer reasonable time to investigate before public disclosure.
 
-## Security Measures
+## Security design
 
-This project implements the following security measures:
+- The renderer is sandboxed, has context isolation enabled, and has no Node.js integration.
+- IPC calls are accepted only from the app's main frame and validate their arguments before touching USB or disk state.
+- Navigation and external links are restricted to this repository over HTTPS.
+- Device access is limited to the known vendor and product IDs and the expected Windows HID control collection.
+- Mouse-memory writes are validated and serialized; multi-report operations cannot interleave.
+- Settings and profiles are size-limited, schema-validated, and written atomically with user-only file permissions where supported.
+- Linux udev access uses `0660` plus `uaccess`, not world-writable device permissions. An explicit dedicated-group fallback is available for login managers without working `uaccess` ACLs; it is never enabled silently.
+- Dependencies and GitHub Actions are locked, audited, and verified on Windows and Linux.
+- Release assets include SHA-256 checksums and GitHub build-provenance attestations.
 
-- **Content Security Policy (CSP)**: Implemented in the renderer process to prevent XSS attacks
-- **Context Isolation**: Enabled for secure IPC communication between main and renderer processes
-- **Sandboxing**: Enabled for the renderer process (Electron security best practice)
-- **Input Validation**: All user inputs are validated and sanitized before USB communication
-- **Dependency Auditing**: Regular automated security audits via GitHub Actions
-- **Dependabot**: Automated dependency updates for security patches
-- **Code Signing**: Application is signed for distribution (where applicable)
+## Signing status
 
-## Known Security Considerations
+The updater only checks official release metadata and does not silently execute downloaded binaries. Windows packages are signed only when the release workflow has a valid code-signing certificate configured; otherwise users must verify the published checksum. Do not treat an unsigned build as signed.
 
-- The application requires USB HID access to communicate with the mouse device
-- Linux users must install udev rules to allow non-root access (see README)
-- The application uses `sandbox: false` in the main window for compatibility with the USB driver module
+## Hardware safety
 
-## Security Updates
-
-Security updates will be released as patch versions (e.g., 1.2.1) and will be clearly noted in the CHANGELOG.
-
-## Acknowledgments
-
-We thank security researchers who responsibly disclose vulnerabilities and help improve the security of this project.
+This is a reverse-engineered community driver. A shared receiver USB ID can represent multiple mouse models, so the app requires an explicit model choice. Only use a model/protocol combination shown as compatible and do not disconnect the mouse during an active Apply or reset operation.

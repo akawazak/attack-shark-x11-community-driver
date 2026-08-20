@@ -60,7 +60,7 @@ export class R1UserPreferencesBuilder implements BaseProtocolBuilder {
 	 * @param minutes Time in minutes (1-60)
 	 */
 	setDeepSleep(minutes: number): this {
-		if (minutes < 1 || minutes > 60) {
+		if (!Number.isInteger(minutes) || minutes < 1 || minutes > 60) {
 			throw new ParamsError('deepSleepTime', 'the minutes of deep sleep should be in the range of 1 to 60');
 		}
 		this.deepSleepMinutes = minutes;
@@ -74,7 +74,7 @@ export class R1UserPreferencesBuilder implements BaseProtocolBuilder {
 	 * @param minutes Time in minutes (0.5 to 30, step 0.5)
 	 */
 	setSleep(minutes: number): this {
-		if (minutes < 0.5 || minutes > 30) {
+		if (!Number.isFinite(minutes) || minutes < 0.5 || minutes > 30 || minutes * 2 !== Math.round(minutes * 2)) {
 			throw new ParamsError('sleepTime', 'Invalid sleep value (0.5–30 min)');
 		}
 		this.buffer[9] = Math.round(minutes * 2);
@@ -86,7 +86,7 @@ export class R1UserPreferencesBuilder implements BaseProtocolBuilder {
 	 * @param ms Time in milliseconds (4-50ms, must be even)
 	 */
 	setKeyResponse(ms: number): this {
-		if (ms < 4 || ms > 50 || ms % 2 !== 0) {
+		if (!Number.isInteger(ms) || ms < 4 || ms > 50 || ms % 2 !== 0) {
 			throw new ParamsError('keyResponse', 'Invalid value (use 4–50ms, step 2)');
 		}
 

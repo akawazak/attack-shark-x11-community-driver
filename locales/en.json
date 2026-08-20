@@ -4,6 +4,17 @@
 	"language": "Language",
 	"english": "English",
 	"spanish": "Spanish",
+	"common": {
+		"applyToMouse": "Apply to mouse",
+		"applyingToMouse": "Writing to mouse...",
+		"savedToMouse": "Saved to mouse",
+		"saveFailed": "Could not save to mouse"
+	},
+	"support": {
+		"title": "Support the community driver",
+		"description": "If the app helps, a GitHub star makes it easier for other mouse owners to find.",
+		"star": "Star on GitHub"
+	},
 	"dpi": {
 		"title": "DPI Configuration",
 		"save": "Save DPI",
@@ -32,6 +43,9 @@
 	"connection": {
 		"title": "Connect your device",
 		"description": "Choose how you'd like to connect your mouse to start configuring.",
+		"deviceModel": "Mouse model",
+		"changeDevice": "Change mouse",
+		"sharedReceiver": "This receiver uses a shared USB ID, so choose the model printed on your mouse. Your choice is remembered.",
 		"adapter": "2.4G Adapter",
 		"adapterDesc": "Connect via the included 2.4GHz wireless adapter",
 		"wired": "Wired Mode",
@@ -58,7 +72,14 @@
 		"saving": "Saving...",
 		"storedProfiles": "Stored Profiles",
 		"applyAction": "Apply",
+		"loadAction": "Load",
 		"deleteAction": "Delete",
+		"overwriteProfile": "A profile with this name already exists. Replace it?",
+		"deleteProfileConfirm": "Delete profile \"{name}\"?",
+		"profileSaved": "Profile saved locally",
+		"profileLoaded": "Profile loaded. Click Apply to mouse to write it to the mouse.",
+		"profileDeleted": "Profile deleted",
+		"profileError": "Profile action failed",
 		"lighting": "LIGHTING",
 		"effectMode": "Effect Mode",
 		"ledSpeed": "LED Speed",
@@ -93,6 +114,15 @@
 			"breathingDpi": "Breathing DPI"
 		}
 	},
+	"battery": {
+		"checkingStable": "Checking several reports for a stable battery value",
+		"stale": "Battery value is stale; move the mouse to refresh it",
+		"lastUpdated": "Last updated {time}",
+		"unavailable": "Battery unavailable",
+		"wired": "USB connected",
+		"stabilizing": "Stabilizing…",
+		"disconnected": "Disconnected"
+	},
 	"macros": {
 		"title": "Macro Selector",
 		"apply": "Apply Macro",
@@ -119,6 +149,7 @@
 		"delay": "Delay (ms)",
 		"release": "Release",
 		"events": "Events",
+		"capacityError": "This event would exceed the mouse's 47-slot macro capacity",
 		"noEvents": "No events added yet",
 		"removeEvent": "Remove",
 		"applyCustomMacro": "Apply Custom Macro",
@@ -139,7 +170,21 @@
 		"ledMode": "LED Mode",
 		"wireless": "2.4GHz",
 		"batteryUnknown": "N/A",
-		"device": "Device"
+		"device": "Device",
+		"batteryStabilizing": "Stabilizing...",
+		"batteryStale": "stale",
+		"usbConnected": "USB connected"
+	},
+	"updates": {
+		"title": "Updates",
+		"available": "Version {version} is available",
+		"current": "You are up to date",
+		"failed": "Could not check for updates",
+		"ready": "Ready to check",
+		"safeDownload": "Updates open the official GitHub release page so you can verify and install them yourself.",
+		"checking": "Checking...",
+		"check": "Check for updates",
+		"download": "Open release"
 	},
 	"deviceInfo": {
 		"title": "Device Information",
@@ -157,6 +202,13 @@
 		"deviceVersion": "Device Version",
 		"interfaces": "Interfaces",
 		"serialNumber": "Serial Number",
+		"batteryDiagnostics": "Battery diagnostics",
+		"batteryState": "Reading state",
+		"batterySamples": "Reports received",
+		"batteryFiltered": "Reports filtered",
+		"batteryLastUpdated": "Last stable update",
+		"batteryLastReport": "Latest report decision",
+		"never": "Not available yet",
 		"refreshHint": "Click \"Refresh\" to load device information",
 		"connectHint": "Connect a device to view information"
 	},

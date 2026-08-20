@@ -114,7 +114,19 @@ export class CustomMacroBuilder implements BaseProtocolBuilder {
 					: new MacrosBuilder(config.macrosBuilder);
 		if (config.playOptions !== undefined) this.setPlayOptions(config.playOptions.mode, config.playOptions.times);
 		if (config.targetButton !== undefined) this.setTargetButton(config.targetButton);
-		if (config.macroEvents && config.macroEvents.length > 0) this.macroEvents.push(...config.macroEvents);
+		if (config.macroEvents && config.macroEvents.length > 0) {
+			if (
+				config.macroEvents.length % 2 !== 0 ||
+				config.macroEvents.length > CustomMacroBuilder.MAX_MACRO_EVENTS * 2
+			) {
+				throw new ParamsError(
+					'macroEvents',
+					`Custom macros support at most ${CustomMacroBuilder.MAX_MACRO_EVENTS} events`,
+				);
+			}
+			for (const byte of config.macroEvents) this.assertByte(byte, 'macroEvents');
+			this.macroEvents.push(...config.macroEvents);
+		}
 	}
 
 	/**
@@ -124,7 +136,16 @@ export class CustomMacroBuilder implements BaseProtocolBuilder {
 	 * @param isRelease If true, the event represents releasing the key (KeyUp).
 	 */
 	addEvent(key: KeyCode | MouseMacroEvent | number, delayMs: number = 10, isRelease: boolean = false): this {
+		this.assertByte(key, 'key');
+		if (typeof isRelease !== 'boolean') throw new ParamsError('isRelease', 'Release must be a boolean');
 		const { eventDelay, extraDelay } = this.handleDelay(delayMs);
+		const addedEvents = extraDelay ? 2 : 1;
+		if (this.macroEvents.length / 2 + addedEvents > CustomMacroBuilder.MAX_MACRO_EVENTS) {
+			throw new ParamsError(
+				'macroEvents',
+				`Custom macros support at most ${CustomMacroBuilder.MAX_MACRO_EVENTS} events`,
+			);
+		}
 		this.pushEventBytes(isRelease ? 0x80 | eventDelay : eventDelay, key);
 		if (extraDelay) {
 			this.pushEventBytes(extraDelay, 0x03);
@@ -133,6 +154,14 @@ export class CustomMacroBuilder implements BaseProtocolBuilder {
 	}
 
 	pushEventBytes(byte1: number, byte2: number): this {
+		this.assertByte(byte1, 'event byte');
+		this.assertByte(byte2, 'event byte');
+		if (this.macroEvents.length / 2 >= CustomMacroBuilder.MAX_MACRO_EVENTS) {
+			throw new ParamsError(
+				'macroEvents',
+				`Custom macros support at most ${CustomMacroBuilder.MAX_MACRO_EVENTS} events`,
+			);
+		}
 		this.macroEvents.push(byte1, byte2);
 		return this;
 	}
@@ -222,7 +251,13 @@ export class CustomMacroBuilder implements BaseProtocolBuilder {
 
 	build(mode: ConnectionMode): [Buffer, Buffer, Buffer, Buffer] {
 		const eventCount = Math.floor(this.macroEvents.length / 2);
-		this.secondPacket[29] = Math.min(eventCount, CustomMacroBuilder.MAX_MACRO_EVENTS);
+		if (eventCount > CustomMacroBuilder.MAX_MACRO_EVENTS) {
+			throw new ParamsError(
+				'macroEvents',
+				`Custom macros support at most ${CustomMacroBuilder.MAX_MACRO_EVENTS} events`,
+			);
+		}
+		this.secondPacket[29] = eventCount;
 
 		// Clear events area first
 		this.secondPacket.fill(0, 30);
@@ -257,7 +292,10 @@ export class CustomMacroBuilder implements BaseProtocolBuilder {
 		extraDelay?: number;
 	} {
 		const MAX_DELAY = 51000;
-		const clampedMs = Math.min(delayMs, MAX_DELAY);
+		if (!Number.isFinite(delayMs) || !Number.isInteger(delayMs) || delayMs < 0 || delayMs > MAX_DELAY) {
+			throw new ParamsError('delayMs', `Delay must be an integer between 0 and ${MAX_DELAY} ms`);
+		}
+		const clampedMs = delayMs;
 
 		const computeByte = (ms: number): number => 2 * Math.floor((ms + 5) / 20) + 1;
 
@@ -267,6 +305,12 @@ export class CustomMacroBuilder implements BaseProtocolBuilder {
 			const extraUnits = Math.min(Math.floor(clampedMs / 200), 255);
 			const rem = clampedMs % 200;
 			return { eventDelay: computeByte(rem), extraDelay: extraUnits };
+		}
+	}
+
+	private assertByte(value: number, field: string): void {
+		if (!Number.isInteger(value) || value < 0 || value > 0xff) {
+			throw new ParamsError(field, `${field} must be an integer byte`);
 		}
 	}
 }

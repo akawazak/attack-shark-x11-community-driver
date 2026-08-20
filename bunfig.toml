@@ -1,0 +1,3 @@
+[install]
+peer = false
+minimumReleaseAge = 259200

@@ -117,8 +117,18 @@ export class MacrosBuilder implements BaseProtocolBuilder {
 	}
 
 	setMacro(button: Button, macro: MacroTuple): this {
+		if (!Array.isArray(macro) || macro.length !== 3) {
+			throw new ParamsError('macro', 'A macro must contain exactly three bytes');
+		}
 		const [firmwareAction = FirmwareAction.DISABLE_BUTTON, modifier = Modifiers.NONE, keyCode = KeyCode.NONE] =
 			macro;
+		if (
+			![firmwareAction, modifier, keyCode].every(
+				(value) => Number.isInteger(value) && value >= 0 && value <= 0xff,
+			)
+		) {
+			throw new ParamsError('macro', 'Macro values must be integer bytes');
+		}
 
 		const internalButton = internalButtonsMap[button];
 

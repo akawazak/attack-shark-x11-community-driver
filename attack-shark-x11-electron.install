@@ -1,0 +1,21 @@
+_attack_shark_refresh_udev() {
+	rm -f -- /etc/udev/rules.d/99-attack-shark-x11-electron.rules
+	if command -v udevadm >/dev/null 2>&1; then
+		udevadm control --reload-rules || true
+		udevadm trigger --subsystem-match=usb --attr-match=idVendor=1d57 || true
+	fi
+}
+
+post_install() {
+	_attack_shark_refresh_udev
+}
+
+post_upgrade() {
+	_attack_shark_refresh_udev
+}
+
+post_remove() {
+	if command -v udevadm >/dev/null 2>&1; then
+		udevadm control --reload-rules || true
+	fi
+}

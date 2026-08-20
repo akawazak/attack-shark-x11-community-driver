@@ -1,4 +1,4 @@
-export function useLatestTask<T>(task: (value: T) => Promise<void>) {
+export function useLatestTask<T>(task: (value: T) => Promise<void>, onError: (error: unknown) => void = console.error) {
 	let running = false;
 	let pending: T | undefined;
 
@@ -8,7 +8,11 @@ export function useLatestTask<T>(task: (value: T) => Promise<void>) {
 			while (pending !== undefined) {
 				const next = pending;
 				pending = undefined;
-				await task(next);
+				try {
+					await task(next);
+				} catch (error) {
+					onError(error);
+				}
 			}
 		} finally {
 			running = false;

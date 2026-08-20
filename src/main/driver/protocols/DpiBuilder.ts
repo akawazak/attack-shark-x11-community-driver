@@ -214,6 +214,9 @@ export class DpiBuilder implements BaseProtocolBuilder {
 	}
 
 	private encodeDpi(dpi: number): number {
+		if (!Number.isFinite(dpi) || dpi < 50 || dpi > 22000) {
+			throw new ParamsError('dpi', `Unsupported DPI: ${dpi}`);
+		}
 		const keys = Object.keys(DPI_STEP_MAP)
 			.map(Number)
 			.sort((a, b) => a - b);

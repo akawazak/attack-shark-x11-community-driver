@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import type { BatteryDiagnosticSample, BatteryDiagnostics, BatteryStatus } from '../../../shared/app-types.js';
 import { ConnectionMode, type Logger } from '../types.js';
 import { TimeoutError } from '../errors.js';
 
@@ -17,10 +18,23 @@ const X11_BATTERY_CONFIG: Required<Pick<BatteryMonitorConfig, 'headerPrefix' | '
 	extractValue: (data: Buffer): number => data[4] ?? 0,
 };
 const MAX_SINGLE_REPORT_CHANGE = 5;
+const INITIAL_SAMPLE_COUNT = 3;
+const LARGE_CHANGE_CONFIRMATIONS = 3;
+const MAX_DIAGNOSTIC_SAMPLES = 50;
+const STALE_AFTER_MS = 2 * 60_000;
 
 export class BatteryMonitor extends EventEmitter<BatteryMonitorEvents> {
-	private lastBattery: number = -1;
-	private pendingBattery: number = -1;
+	private lastBattery = -1;
+	private hasStableBattery = false;
+	private lastUpdated: number | null = null;
+	private initialSamples: number[] = [];
+	private pendingRise = -1;
+	private pendingRiseCount = 0;
+	private pendingDrop = -1;
+	private pendingDropCount = 0;
+	private sampleCount = 0;
+	private rejectedCount = 0;
+	private diagnostics: BatteryDiagnosticSample[] = [];
 	private device: { nativeTransferIn(endpoint: number, timeout: number, length: number): Promise<Uint8Array | null> };
 	private interruptEndpoint: number;
 	private connectionMode: () => ConnectionMode;
@@ -55,40 +69,59 @@ export class BatteryMonitor extends EventEmitter<BatteryMonitorEvents> {
 
 	getBatteryLevel(timeoutMs: number): Promise<number> {
 		return new Promise((resolve, reject) => {
-			if (this.connectionMode() === ConnectionMode.Wired) {
+			if (this.connectionMode() === ConnectionMode.Wired || this.connectionMode() === ConnectionMode.R1Wired) {
 				resolve(-1);
 				return;
 			}
 
 			let finished = false;
-
 			const cleanup = (): void => {
 				if (finished) return;
 				finished = true;
 				clearTimeout(timeout);
 				this.removeListener('batteryChange', handleBattery);
 			};
-
 			const handleBattery = (battery: number): void => {
 				if (finished) return;
-				if (battery <= 100) {
-					cleanup();
-					resolve(battery);
-				}
+				cleanup();
+				resolve(battery);
 			};
-
 			const timeout = setTimeout(() => {
 				cleanup();
-				reject(new TimeoutError('Timeout waiting for battery report'));
+				reject(new TimeoutError('Timeout waiting for a stable battery report'));
 			}, timeoutMs);
 
 			this.on('batteryChange', handleBattery);
-
-			if (this.lastBattery !== -1 && this.lastBattery <= 100) {
+			if (this.lastBattery >= 0 && this.lastBattery <= 100) {
 				cleanup();
 				resolve(this.lastBattery);
 			}
 		});
+	}
+
+	getStatus(): BatteryStatus {
+		if (!this.polling) {
+			return {
+				level: -1,
+				state: 'unavailable',
+				updatedAt: this.lastUpdated,
+				sampleCount: this.sampleCount,
+				rejectedCount: this.rejectedCount,
+			};
+		}
+		const stale =
+			this.hasStableBattery && this.lastUpdated !== null && Date.now() - this.lastUpdated > STALE_AFTER_MS;
+		return {
+			level: this.lastBattery,
+			state: !this.hasStableBattery ? 'initializing' : stale ? 'stale' : 'stable',
+			updatedAt: this.lastUpdated,
+			sampleCount: this.sampleCount,
+			rejectedCount: this.rejectedCount,
+		};
+	}
+
+	getDiagnostics(): BatteryDiagnostics {
+		return { status: this.getStatus(), samples: structuredClone(this.diagnostics) };
 	}
 
 	setupListeners(): void {
@@ -100,29 +133,115 @@ export class BatteryMonitor extends EventEmitter<BatteryMonitorEvents> {
 				this.headerPrefix === null || this.headerPrefix === undefined
 					? true
 					: data.subarray(0, this.headerPrefix.length).equals(this.headerPrefix);
-
-			if (!matched) return;
-			if (data.length < 5) return;
-
-			const battery = this.extractValue(data);
-			if (battery === undefined || battery < 0 || battery > 100 || battery === this.lastBattery) {
-				this.pendingBattery = -1;
+			if (!matched || data.length < 5) {
+				this.recordSample(data, null, false, !matched ? 'signature-mismatch' : 'report-too-short');
 				return;
 			}
-			if (this.lastBattery !== -1 && Math.abs(battery - this.lastBattery) > MAX_SINGLE_REPORT_CHANGE) {
-				if (battery !== this.pendingBattery) {
-					this.pendingBattery = battery;
+
+			const battery = this.extractValue(data);
+			if (!Number.isInteger(battery) || battery < 0 || battery > 100) {
+				this.recordSample(data, battery, false, 'value-out-of-range');
+				return;
+			}
+			this.sampleCount += 1;
+
+			if (!this.hasStableBattery) {
+				this.initialSamples.push(battery);
+				if (this.lastBattery === -1) {
+					this.lastBattery = battery;
+					this.lastUpdated = Date.now();
+					this.emit('batteryChange', battery);
+				}
+				if (this.initialSamples.length < INITIAL_SAMPLE_COUNT) {
+					this.recordSample(data, battery, false, 'initial-stabilization');
+					return;
+				}
+				const stableValue = median(this.initialSamples);
+				this.initialSamples = [];
+				this.accept(data, stableValue, 'initial-median');
+				return;
+			}
+
+			if (battery === this.lastBattery) {
+				this.pendingRise = -1;
+				this.pendingRiseCount = 0;
+				this.pendingDrop = -1;
+				this.pendingDropCount = 0;
+				this.lastUpdated = Date.now();
+				this.recordSample(data, battery, true, 'unchanged');
+				return;
+			}
+
+			const change = battery - this.lastBattery;
+			if (change > MAX_SINGLE_REPORT_CHANGE) {
+				this.pendingDrop = -1;
+				this.pendingDropCount = 0;
+				if (this.pendingRise !== battery) {
+					this.pendingRise = battery;
+					this.pendingRiseCount = 1;
+				} else {
+					this.pendingRiseCount += 1;
+				}
+				if (this.pendingRiseCount < LARGE_CHANGE_CONFIRMATIONS) {
+					this.recordSample(data, battery, false, 'confirming-large-rise');
 					return;
 				}
 			}
-			this.pendingBattery = -1;
-			this.lastBattery = battery;
-			this.emit('batteryChange', battery);
+
+			if (change < -MAX_SINGLE_REPORT_CHANGE) {
+				this.pendingRise = -1;
+				this.pendingRiseCount = 0;
+				if (this.pendingDrop !== battery) {
+					this.pendingDrop = battery;
+					this.pendingDropCount = 1;
+				} else {
+					this.pendingDropCount += 1;
+				}
+				if (this.pendingDropCount < LARGE_CHANGE_CONFIRMATIONS) {
+					this.recordSample(data, battery, false, 'confirming-large-drop');
+					return;
+				}
+			}
+
+			this.accept(
+				data,
+				battery,
+				change > MAX_SINGLE_REPORT_CHANGE
+					? 'confirmed-large-rise'
+					: change < -MAX_SINGLE_REPORT_CHANGE
+						? 'confirmed-large-drop'
+						: 'normal-change',
+			);
 		});
 	}
 
+	private accept(data: Buffer, battery: number, reason: string): void {
+		this.pendingRise = -1;
+		this.pendingRiseCount = 0;
+		this.pendingDrop = -1;
+		this.pendingDropCount = 0;
+		this.lastBattery = battery;
+		this.hasStableBattery = true;
+		this.lastUpdated = Date.now();
+		this.recordSample(data, battery, true, reason);
+		this.emit('batteryChange', battery);
+	}
+
+	private recordSample(data: Buffer, value: number | null, accepted: boolean, reason: string): void {
+		if (!accepted) this.rejectedCount += 1;
+		this.diagnostics.push({
+			timestamp: Date.now(),
+			value: Number.isFinite(value) ? value : null,
+			accepted,
+			reason,
+			reportHex: data.subarray(0, 16).toString('hex'),
+		});
+		if (this.diagnostics.length > MAX_DIAGNOSTIC_SAMPLES) this.diagnostics.shift();
+	}
+
 	startPolling(): void {
-		if (!this.isOpen() || this.polling) return;
+		const mode = this.connectionMode();
+		if (!this.isOpen() || this.polling || mode === ConnectionMode.Wired || mode === ConnectionMode.R1Wired) return;
 		this.polling = true;
 		this.pollLoop();
 	}
@@ -131,18 +250,11 @@ export class BatteryMonitor extends EventEmitter<BatteryMonitorEvents> {
 		while (this.polling) {
 			try {
 				const data = await this.device.nativeTransferIn(this.interruptEndpoint, 2000, 64);
-				if (data) {
-					const buffer = Buffer.from(data);
-					this.emit('_internalBatteryData', buffer);
-				}
-			} catch (e) {
+				if (data) this.emit('_internalBatteryData', Buffer.from(data).subarray(0, 64));
+			} catch (error) {
 				if (this.polling) {
-					const errMsg = e instanceof Error ? e.message : String(e);
-					// "Cancelled" is normal — means no data arrived within the timeout window.
-					// Log other errors as they may indicate device issues.
-					if (!errMsg.includes('Cancelled')) {
-						this.logger.warn('Battery monitor interrupt read error', e);
-					}
+					const message = error instanceof Error ? error.message : String(error);
+					if (!message.includes('Cancelled')) this.logger.warn('Battery monitor interrupt read error', error);
 				}
 			}
 
@@ -166,4 +278,9 @@ export class BatteryMonitor extends EventEmitter<BatteryMonitorEvents> {
 		this.stopPolling();
 		this.removeAllListeners();
 	}
+}
+
+function median(values: number[]): number {
+	const sorted = [...values].sort((a, b) => a - b);
+	return sorted[Math.floor(sorted.length / 2)] ?? -1;
 }

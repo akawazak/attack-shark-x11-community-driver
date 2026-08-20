@@ -20,4 +20,25 @@ describe('useLatestTask', () => {
 		await Promise.resolve();
 		expect(values).toEqual([1, 3]);
 	});
+
+	it('reports a failed task and continues with the newest pending value', async () => {
+		const values: number[] = [];
+		const errors: unknown[] = [];
+		const schedule = useLatestTask(
+			(value: number) => {
+				if (value === 1) return Promise.reject(new Error('storage unavailable'));
+				values.push(value);
+				return Promise.resolve();
+			},
+			(error) => errors.push(error),
+		);
+
+		schedule(1);
+		schedule(2);
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(errors).toHaveLength(1);
+		expect(values).toEqual([2]);
+	});
 });

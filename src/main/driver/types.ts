@@ -10,10 +10,7 @@ export enum ConnectionMode {
 	R1Wired = 0xfa61,
 }
 
-/**
- * Device model identifier.
- */
-export type DeviceModel = 'X11' | 'X11SE' | 'R1';
+export type { DeviceModel, DeviceProtocol } from '../../shared/app-types.js';
 
 /**
  * Base structure for USB control transfer options.

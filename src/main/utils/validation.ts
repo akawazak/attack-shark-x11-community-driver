@@ -1,13 +1,15 @@
 import { DpiBuilder, type StageIndex } from '../driver/protocols/DpiBuilder.js';
-import type { AppSettings } from '../storage/settingsManager.js'; // Import AppSettings
+import type { AppSettings } from '../../shared/app-types.js';
 
-export const validateDpiConfig = (config: unknown): AppSettings['dpiConfig'] => {
-	// Change return type
+export const validateDpiConfig = (config: unknown, maximumDpi = 22000, minimumDpi = 50): AppSettings['dpiConfig'] => {
 	if (typeof config !== 'object' || config === null) {
 		throw new Error('Invalid DPI configuration: must be an object');
 	}
 
 	const configObj = config as Record<string, unknown>;
+	const allowedFields = ['angleSnap', 'ripplerControl', 'dpiValues', 'activeStage'];
+	const unknownField = Object.keys(configObj).find((key) => !allowedFields.includes(key));
+	if (unknownField) throw new Error(`Invalid DPI configuration field: ${unknownField}`);
 	const validated: AppSettings['dpiConfig'] = { ...DpiBuilder.DEFAULT_OPTIONS } as AppSettings['dpiConfig'];
 
 	if (configObj['angleSnap'] !== undefined) {
@@ -26,7 +28,7 @@ export const validateDpiConfig = (config: unknown): AppSettings['dpiConfig'] => 
 		if (
 			!Array.isArray(dpiValues) ||
 			dpiValues.length !== 6 ||
-			!dpiValues.every((v) => typeof v === 'number' && v > 0)
+			!dpiValues.every((v) => typeof v === 'number' && Number.isFinite(v) && v >= minimumDpi && v <= maximumDpi)
 		) {
 			throw new Error('Invalid dpiValues: must be an array of 6 positive numbers');
 		}
@@ -34,8 +36,12 @@ export const validateDpiConfig = (config: unknown): AppSettings['dpiConfig'] => 
 	}
 
 	if (configObj['activeStage'] !== undefined) {
-		const activeStage = configObj['activeStage'] as number;
-		if (![1, 2, 3, 4, 5, 6].includes(activeStage)) {
+		const activeStage = configObj['activeStage'];
+		if (
+			typeof activeStage !== 'number' ||
+			!Number.isInteger(activeStage) ||
+			![1, 2, 3, 4, 5, 6].includes(activeStage)
+		) {
 			throw new Error('Invalid activeStage: must be between 1 and 6');
 		}
 		validated.activeStage = activeStage as StageIndex;

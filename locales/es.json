@@ -4,6 +4,17 @@
 	"language": "Idioma",
 	"english": "Inglés",
 	"spanish": "Español",
+	"common": {
+		"applyToMouse": "Aplicar al ratón",
+		"applyingToMouse": "Escribiendo en el ratón...",
+		"savedToMouse": "Guardado en el ratón",
+		"saveFailed": "No se pudo guardar en el ratón"
+	},
+	"support": {
+		"title": "Apoya el controlador comunitario",
+		"description": "Si la aplicación te resulta útil, una estrella en GitHub ayuda a que otros usuarios la encuentren.",
+		"star": "Dar una estrella en GitHub"
+	},
 	"dpi": {
 		"title": "Configuración DPI",
 		"save": "Guardar DPI",
@@ -32,6 +43,9 @@
 	"connection": {
 		"title": "Conecta tu dispositivo",
 		"description": "Elige cómo conectar tu mouse para comenzar la configuración.",
+		"deviceModel": "Modelo del ratón",
+		"changeDevice": "Cambiar ratón",
+		"sharedReceiver": "Este receptor usa un ID USB compartido; elige el modelo impreso en tu ratón. La selección se recordará.",
 		"adapter": "Adaptador 2.4G",
 		"adapterDesc": "Conecta mediante el adaptador inalámbrico 2.4GHz incluido",
 		"wired": "Modo Cable",
@@ -58,7 +72,14 @@
 		"saving": "Guardando...",
 		"storedProfiles": "Perfiles Guardados",
 		"applyAction": "Aplicar",
+		"loadAction": "Cargar",
 		"deleteAction": "Eliminar",
+		"overwriteProfile": "Ya existe un perfil con este nombre. ¿Reemplazarlo?",
+		"deleteProfileConfirm": "¿Eliminar el perfil \"{name}\"?",
+		"profileSaved": "Perfil guardado localmente",
+		"profileLoaded": "Perfil cargado. Pulsa Aplicar al ratón para escribirlo en el ratón.",
+		"profileDeleted": "Perfil eliminado",
+		"profileError": "La acción del perfil falló",
 		"lighting": "ILUMINACIÓN",
 		"effectMode": "Modo de Efecto",
 		"ledSpeed": "Velocidad LED",
@@ -93,6 +114,15 @@
 			"breathingDpi": "Respiración DPI"
 		}
 	},
+	"battery": {
+		"checkingStable": "Comprobando varios informes para obtener una batería estable",
+		"stale": "El valor de batería está desactualizado; mueve el ratón para actualizarlo",
+		"lastUpdated": "Última actualización: {time}",
+		"unavailable": "Batería no disponible",
+		"wired": "USB conectado",
+		"stabilizing": "Estabilizando…",
+		"disconnected": "Desconectado"
+	},
 	"macros": {
 		"title": "Selector de Macros",
 		"apply": "Aplicar Macro",
@@ -119,6 +149,7 @@
 		"delay": "Retardo (ms)",
 		"release": "Soltar",
 		"events": "Eventos",
+		"capacityError": "Este evento superaría la capacidad de 47 espacios de macros del ratón",
 		"noEvents": "No hay eventos añadidos",
 		"removeEvent": "Eliminar",
 		"applyCustomMacro": "Aplicar Macro Personalizado",
@@ -139,7 +170,21 @@
 		"ledMode": "Modo LED",
 		"wireless": "2.4GHz",
 		"batteryUnknown": "N/A",
-		"device": "Dispositivo"
+		"device": "Dispositivo",
+		"batteryStabilizing": "Estabilizando...",
+		"batteryStale": "desactualizada",
+		"usbConnected": "USB conectado"
+	},
+	"updates": {
+		"title": "Actualizaciones",
+		"available": "La versión {version} está disponible",
+		"current": "La aplicación está actualizada",
+		"failed": "No se pudieron buscar actualizaciones",
+		"ready": "Listo para buscar",
+		"safeDownload": "Las actualizaciones abren la versión oficial de GitHub para que puedas verificarla e instalarla.",
+		"checking": "Buscando...",
+		"check": "Buscar actualizaciones",
+		"download": "Abrir versión"
 	},
 	"deviceInfo": {
 		"title": "Información del Dispositivo",
@@ -157,6 +202,13 @@
 		"deviceVersion": "Versión del Dispositivo",
 		"interfaces": "Interfaces",
 		"serialNumber": "Número de Serie",
+		"batteryDiagnostics": "Diagnóstico de batería",
+		"batteryState": "Estado de lectura",
+		"batterySamples": "Informes recibidos",
+		"batteryFiltered": "Informes filtrados",
+		"batteryLastUpdated": "Última actualización estable",
+		"batteryLastReport": "Decisión del último informe",
+		"never": "Aún no disponible",
 		"refreshHint": "Haz clic en \"Actualizar\" para cargar la información del dispositivo",
 		"connectHint": "Conecta un dispositivo para ver información"
 	},

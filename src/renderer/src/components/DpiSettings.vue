@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import { reactive, computed, onMounted, watch } from 'vue';
+import { reactive, computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Zap, Target, Sliders } from 'lucide-vue-next';
 import BaseInput from './BaseInput.vue';
 import BaseSlider from './BaseSlider.vue';
 import BaseToggle from './BaseToggle.vue';
 import Card from './Card.vue';
+import BaseButton from './BaseButton.vue';
+import StatusMessage from './StatusMessage.vue';
 import { useLatestTask } from '../composables/useLatestTask';
 
 const { t } = useI18n();
 
 const props = defineProps<{
 	isConnected: boolean;
-	deviceModel?: 'X11' | 'X11SE' | 'R1';
+	deviceProtocol?: 'X11' | 'R1';
 }>();
 
 const R1_DEFAULTS = [800, 1600, 3200, 4000, 5000, 12000] as [number, number, number, number, number, number];
@@ -22,7 +24,7 @@ const dpiConfig = reactive({
 	activeStage: 2,
 	angleSnap: false,
 	ripplerControl: true,
-	dpiValues: (props.deviceModel === 'R1' ? R1_DEFAULTS : X11_DEFAULTS).slice() as [
+	dpiValues: (props.deviceProtocol === 'R1' ? R1_DEFAULTS : X11_DEFAULTS).slice() as [
 		number,
 		number,
 		number,
@@ -46,21 +48,43 @@ const snapshotDpi = (): DpiConfig => ({
 	dpiValues: [...dpiConfig.dpiValues],
 });
 
-const queueDpi = useLatestTask(async (config: DpiConfig) => {
-	try {
-		await window.api.setDpi(config);
-	} catch (error: unknown) {
-		console.error('Auto-save DPI failed:', error);
-	}
+const isSaving = ref(false);
+const isDirty = ref(false);
+const statusMessage = ref('');
+const statusType = ref<'success' | 'error' | 'info'>('info');
+
+const persistDpi = useLatestTask(async (config: DpiConfig) => {
+	await window.api.patchSettings({
+		dpiConfig: config as Parameters<typeof window.api.patchSettings>[0]['dpiConfig'],
+	});
 });
+
+const applyDpi = async () => {
+	if (!props.isConnected || isSaving.value) return;
+	isSaving.value = true;
+	statusType.value = 'info';
+	statusMessage.value = t('common.applyingToMouse');
+	try {
+		await window.api.setDpi(snapshotDpi());
+		isDirty.value = false;
+		statusType.value = 'success';
+		statusMessage.value = t('common.savedToMouse');
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		statusType.value = 'error';
+		statusMessage.value = `${t('common.saveFailed')}: ${message}`;
+	} finally {
+		isSaving.value = false;
+	}
+};
 
 onMounted(async () => {
 	const settings = await window.api.getSettings();
 	if (settings && settings.dpiConfig) {
 		Object.assign(dpiConfig, settings.dpiConfig);
 		// Clamp DPI values to model range
-		const max = props.deviceModel === 'R1' ? 18000 : 22000;
-		const min = props.deviceModel === 'R1' ? 100 : 50;
+		const max = props.deviceProtocol === 'R1' ? 18000 : 22000;
+		const min = props.deviceProtocol === 'R1' ? 100 : 50;
 		dpiConfig.dpiValues = dpiConfig.dpiValues.map((v) => Math.max(min, Math.min(max, v))) as [
 			number,
 			number,
@@ -74,29 +98,19 @@ onMounted(async () => {
 	// Set up watcher after initial load so it doesn't fire on mount
 	watch(
 		dpiConfig,
-		async () => {
-			const s = await window.api.getSettings();
-			await window.api.saveSettings({
-				...s,
-				dpiConfig: {
-					activeStage: dpiConfig.activeStage,
-					angleSnap: dpiConfig.angleSnap,
-					ripplerControl: dpiConfig.ripplerControl,
-					dpiValues: [...dpiConfig.dpiValues],
-				},
-			});
-			if (props.isConnected) {
-				queueDpi(snapshotDpi());
-			}
+		() => {
+			isDirty.value = true;
+			statusMessage.value = '';
+			persistDpi(snapshotDpi());
 		},
 		{ deep: true },
 	);
 });
 
 // DPI range depends on device model
-const dpiMin = computed(() => (props.deviceModel === 'R1' ? 100 : 50));
-const dpiMax = computed(() => (props.deviceModel === 'R1' ? 18000 : 22000));
-const dpiStep = computed(() => (props.deviceModel === 'R1' ? 100 : 50));
+const dpiMin = computed(() => (props.deviceProtocol === 'R1' ? 100 : 50));
+const dpiMax = computed(() => (props.deviceProtocol === 'R1' ? 18000 : 22000));
+const dpiStep = computed(() => (props.deviceProtocol === 'R1' ? 100 : 50));
 </script>
 
 <template>
@@ -106,7 +120,11 @@ const dpiStep = computed(() => (props.deviceModel === 'R1' ? 100 : 50));
 				<Target class="w-8 h-8 text-shark-primary" />
 				{{ $t('dpi.title') }}
 			</h2>
+			<BaseButton @click="applyDpi" variant="green" :disabled="!isConnected || isSaving || !isDirty">
+				{{ isSaving ? $t('common.applyingToMouse') : $t('common.applyToMouse') }}
+			</BaseButton>
 		</div>
+		<StatusMessage :message="statusMessage" :type="statusType" />
 
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 			<!-- Sensor Settings -->

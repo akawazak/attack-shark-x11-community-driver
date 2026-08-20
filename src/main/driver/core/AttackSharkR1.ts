@@ -21,6 +21,7 @@ import {
 import { WriteQueue } from '../utils/writeQueue.js';
 import { logger as defaultLogger } from '../logger/index.js';
 import { BatteryMonitor } from './BatteryMonitor.js';
+import type { BatteryDiagnostics, BatteryStatus } from '../../../shared/app-types.js';
 
 type USBRequestType = 'standard' | 'class' | 'vendor';
 type USBRecipient = 'device' | 'interface' | 'endpoint' | 'other';
@@ -102,6 +103,7 @@ export class AttackSharkR1 extends EventEmitter<AttackSharkR1Events> {
 	private logger: Logger;
 	private batteryMonitor: BatteryMonitor | null = null;
 	private memoryWriteQueue = new WriteQueue();
+	private deviceOperationQueue = new WriteQueue();
 	private cachedUserPreferences: R1UserPreferencesBuilderOptions | null = null;
 
 	constructor(options: { connectionMode: ConnectionMode; logger?: Logger; delayMs?: number }) {
@@ -302,7 +304,7 @@ export class AttackSharkR1 extends EventEmitter<AttackSharkR1Events> {
 		} as ControlTransferOut) as Promise<number>;
 	}
 
-	getBatteryLevel(timeoutMs = 2500): Promise<number> {
+	getBatteryLevel(timeoutMs = 6000): Promise<number> {
 		this.checkIsOpen();
 
 		if (this.connectionMode === ConnectionMode.R1Wired) {
@@ -345,6 +347,22 @@ export class AttackSharkR1 extends EventEmitter<AttackSharkR1Events> {
 		});
 	}
 
+	getBatteryStatus(): BatteryStatus {
+		return (
+			this.batteryMonitor?.getStatus() ?? {
+				level: -1,
+				state: 'unavailable',
+				updatedAt: null,
+				sampleCount: 0,
+				rejectedCount: 0,
+			}
+		);
+	}
+
+	getBatteryDiagnostics(): BatteryDiagnostics {
+		return this.batteryMonitor?.getDiagnostics() ?? { status: this.getBatteryStatus(), samples: [] };
+	}
+
 	onBatteryChange(listener: (battery: number) => void): () => void {
 		this.checkIsOpen();
 		this.on('batteryChange', listener);
@@ -356,22 +374,23 @@ export class AttackSharkR1 extends EventEmitter<AttackSharkR1Events> {
 	setDpi(options: R1DpiBuilder | R1DpiBuilderOptions): Promise<number> {
 		this.checkIsOpen();
 		const builder = options instanceof R1DpiBuilder ? options : new R1DpiBuilder(options);
-		return this.sendBuilder(builder);
+		return this.deviceOperationQueue.run(() => this.sendBuilder(builder), 0);
 	}
 
 	setPollingRate(rate: R1Rate | R1PollingRateBuilderType): Promise<number> {
 		this.checkIsOpen();
 		const builder = rate instanceof R1PollingRateBuilder ? rate : new R1PollingRateBuilder().setRate(rate);
-		return this.sendBuilder(builder);
+		return this.deviceOperationQueue.run(() => this.sendBuilder(builder), 0);
 	}
 
 	setUserPreferences(options: R1UserPreferencesBuilder | R1UserPreferencesBuilderOptions): Promise<number> {
 		this.checkIsOpen();
 		const builder = options instanceof R1UserPreferencesBuilder ? options : new R1UserPreferencesBuilder(options);
-		if (!(options instanceof R1UserPreferencesBuilder)) {
-			this.cachedUserPreferences = { ...options };
-		}
-		return this.sendBuilder(builder);
+		return this.deviceOperationQueue.run(async () => {
+			const result = await this.sendBuilder(builder);
+			if (!(options instanceof R1UserPreferencesBuilder)) this.cachedUserPreferences = structuredClone(options);
+			return result;
+		}, 0);
 	}
 
 	getCachedUserPreferences(): R1UserPreferencesBuilderOptions | null {
@@ -380,24 +399,26 @@ export class AttackSharkR1 extends EventEmitter<AttackSharkR1Events> {
 
 	resetPollingRate(): Promise<number> {
 		this.checkIsOpen();
-		return this.sendBuilder(new R1PollingRateBuilder());
+		return this.deviceOperationQueue.run(() => this.sendBuilder(new R1PollingRateBuilder()), 0);
 	}
 
 	resetDpi(): Promise<number> {
 		this.checkIsOpen();
-		return this.sendBuilder(new R1DpiBuilder());
+		return this.deviceOperationQueue.run(() => this.sendBuilder(new R1DpiBuilder()), 0);
 	}
 
 	resetUserPreferences(): Promise<number> {
 		this.checkIsOpen();
-		return this.sendBuilder(new R1UserPreferencesBuilder());
+		return this.deviceOperationQueue.run(() => this.sendBuilder(new R1UserPreferencesBuilder()), 0);
 	}
 
-	async reset(): Promise<void> {
+	reset(): Promise<void> {
 		this.checkIsOpen();
-		await this.resetDpi();
-		await this.resetUserPreferences();
-		await this.resetPollingRate();
+		return this.deviceOperationQueue.run(async () => {
+			await this.sendBuilder(new R1DpiBuilder());
+			await this.sendBuilder(new R1UserPreferencesBuilder());
+			await this.sendBuilder(new R1PollingRateBuilder());
+		}, 0);
 	}
 
 	getDeviceInfo(): {

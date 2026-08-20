@@ -185,6 +185,9 @@ export class R1DpiBuilder implements BaseProtocolBuilder {
 	}
 
 	private encodeDpi(dpi: number): number {
+		if (!Number.isFinite(dpi) || dpi < 100 || dpi > 18000) {
+			throw new ParamsError('dpi', `Unsupported DPI: ${dpi}`);
+		}
 		const keys = Object.keys(R1_DPI_STEP_MAP)
 			.map(Number)
 			.sort((a, b) => a - b);

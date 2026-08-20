@@ -403,25 +403,15 @@ describe('AttackSharkX11', () => {
 	});
 
 	describe('reset()', () => {
-		it('should call all sub-reset methods in order', async () => {
+		it('should send the complete reset sequence as one queued operation', async () => {
 			const driver = createDriver();
 			await driver.open();
-
-			const sendInternalSpy = vi.spyOn(driver, 'sendInternalStateResetReportBuilder');
-			const resetDpiSpy = vi.spyOn(driver, 'resetDpi');
-			const resetUserPreferencesSpy = vi.spyOn(driver, 'resetUserPreferences');
-			const resetPollingRateSpy = vi.spyOn(driver, 'resetPollingRate');
-			const resetMacroSpy = vi.spyOn(driver, 'resetMacro');
-			const resetCustomMacroSpy = vi.spyOn(driver, 'resetCustomMacro');
+			mockAdapterDevice.nativeControlTransferOut.mockClear();
 
 			await driver.reset();
 
-			expect(sendInternalSpy).toHaveBeenCalled();
-			expect(resetDpiSpy).toHaveBeenCalled();
-			expect(resetUserPreferencesSpy).toHaveBeenCalled();
-			expect(resetPollingRateSpy).toHaveBeenCalled();
-			expect(resetMacroSpy).toHaveBeenCalled();
-			expect(resetCustomMacroSpy).toHaveBeenCalled();
+			// Internal state, DPI, preferences, polling, button map, and four custom-macro pages.
+			expect(mockAdapterDevice.nativeControlTransferOut).toHaveBeenCalledTimes(9);
 		});
 	});
 

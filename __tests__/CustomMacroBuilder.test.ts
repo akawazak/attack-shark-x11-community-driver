@@ -115,16 +115,11 @@ describe('CustomMacroBuilder Configuration', () => {
 		expect(macroPacket[24]).toBe(FirmwareAction.CUSTOM_MACRO);
 	});
 
-	it('should cap the event counter at 47 even if more events are added', () => {
+	it('should reject events beyond the 47-event device capacity', () => {
 		const builder = new CustomMacroBuilder();
-		// Add 50 events
-		for (let i = 0; i < 50; i++) {
+		for (let i = 0; i < 47; i++) {
 			builder.addEvent(KeyCode.A);
 		}
-
-		const [, secondPacket] = builder.build(ConnectionMode.Adapter);
-
-		// Capacity is 47, so the counter at index 29 should be 47
-		expect(secondPacket[29]).toBe(47);
+		expect(() => builder.addEvent(KeyCode.A)).toThrow('at most 47 events');
 	});
 });

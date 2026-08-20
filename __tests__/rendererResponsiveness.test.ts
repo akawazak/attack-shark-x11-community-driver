@@ -23,4 +23,21 @@ describe('renderer responsiveness', () => {
 			expect(source, file).not.toContain('useDebounce');
 		}
 	});
+
+	it('auto-connects detected hardware without a model-picker step', () => {
+		const appSource = readFileSync(join(rendererRoot, 'App.vue'), 'utf8');
+		expect(appSource).toContain('model: modelForDetectedDevice(preferred)');
+		expect(appSource).toContain('selectPreferredDetectedDevice');
+		expect(appSource).toContain('await refreshDeviceTopology()');
+		expect(appSource).not.toContain("$t('connection.deviceModel')");
+		expect(appSource).not.toContain('modelChoices');
+	});
+
+	it('keeps project support optional and non-blocking', () => {
+		const appSource = readFileSync(join(rendererRoot, 'App.vue'), 'utf8');
+		const supportSource = readFileSync(join(rendererRoot, 'components', 'ProjectSupport.vue'), 'utf8');
+		expect(appSource).toContain('<ProjectSupport />');
+		expect(supportSource).toContain('window.api.openProjectPage()');
+		expect(supportSource).not.toMatch(/dialog|modal|setTimeout|localStorage/i);
+	});
 });
